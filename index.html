@@ -57,6 +57,10 @@ select, input, button {
 <body>
 
 <h2>Ruokaseuranta</h2>
+<h3>Versio 1</h3>  
+
+<button id="backupBtn" style="float:right; margin-bottom:1rem;" onclick="downloadCSV()">Varmuuskopioi CSV</button>
+
 
 <label>Päivä</label>
 <input type="date" id="date">
@@ -286,6 +290,33 @@ date.addEventListener("change",()=>{
   else { isLocked=false; content.classList.remove("locked"); saveBtn.style.display="block"; dayData=d?JSON.parse(d):emptyDay(); }
   render();
 });
+
+function downloadCSV() {
+  let csv = "Päivämäärä,Kalorit ruoasta,Treenien kalorit,Perusaineenvaihdunta,Netto\n";
+  for(let i=0;i<localStorage.length;i++){
+    const key = localStorage.key(i);
+    // Vain päivämäärät (ei draft-tiedostot)
+    if(!key.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
+    const data = JSON.parse(localStorage.getItem(key));
+    let foodKcal = 0;
+    Object.values(data.foods).flat().forEach(f => foodKcal += f.grams * foodsDB[f.id].kcal / 100);
+    let trainKcal = data.trainings.reduce((s,t)=>s+t.kcal,0);
+    let net = Math.round(foodKcal - (BMR + trainKcal));
+    csv += `${key},${Math.round(foodKcal)},${trainKcal},${BMR},${net}\n`;
+  }
+
+  const blob = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", "ruokaseuranta_backup.csv");
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+  
 </script>
 
 </body>
