@@ -215,13 +215,23 @@ function render() {
   });
 
   let foodKcal = 0;
-  Object.values(dayData.foods).flat().forEach(f => foodKcal += foodsDB[f]);
-  let trainKcal = dayData.trainings.reduce((s,t)=>s+t.kcal,0);
-  summary.innerHTML = `
-    Ruoasta: ${foodKcal} kcal<br>
-    Treeneistä: ${trainKcal} kcal<br><br>
-    <strong>Netto: ${foodKcal - trainKcal} kcal</strong>
-  `;
+Object.values(dayData.foods).flat().forEach(f => foodKcal += foodsDB[f]);
+
+let trainKcal = dayData.trainings.reduce((s, t) => s + t.kcal, 0);
+
+// kokonaiskulutus = perusaineenvaihdunta + treeni
+let totalBurn = BMR + trainKcal;
+
+// energiatase
+let net = foodKcal - totalBurn;
+
+summary.innerHTML = `
+  Ruoasta: ${foodKcal} kcal<br>
+  Perusaineenvaihdunta: ${BMR} kcal<br>
+  Treeneistä: ${trainKcal} kcal<br><br>
+  <strong>Netto: ${net} kcal</strong>
+`;
+
 }
 
 function saveDraft() {
