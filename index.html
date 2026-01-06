@@ -71,7 +71,7 @@ function mealSection(id, title, options) {
   <div class="section" id="${id}">
     <h3>${title}</h3>
     <div class="meal-controls">
-      <select id="${id}Select">
+      <select id="${id}Select" onchange="applyDefaultGrams('${id}')">
         <option value="">Valitse ruoka</option>
         ${options}
       </select>
@@ -92,6 +92,11 @@ mealSection("aamupala","Aamupala",`
 mealSection("lounas","Lounas",`
 <option value="kanapasta">Kanapasta</option>
 <option value="salaatti">Salaatti</option>`);
+
+mealSection("valipalat","Välipalat",`
+<option value="rahka">Rahka</option>
+<option value="leipa">Leipä</option>
+<option value="smoothie">Smoothie</option>`);
 
 mealSection("illallinen","Illallinen",`
 <option value="kanapasta">Kanapasta</option>
@@ -126,28 +131,45 @@ mealSection("iltapala","Iltapala",`
 <script>
 const BMR = 2000;
 
-// kcal / 100 g
+// kcal / 100 g + oletusgrammat
 const foodsDB = {
-  kaurapuuro: 60,
-  leipa: 240,
-  smoothie: 70,
-  kanapasta: 160,
-  salaatti: 80,
-  rahka: 60
+  kaurapuuro: { kcal: 60, defaultGrams: 0 },
+  leipa: { kcal: 240, defaultGrams: 0 },
+  smoothie: { kcal: 70, defaultGrams: 0 },
+  kanapasta: { kcal: 160, defaultGrams: 0 },
+  salaatti: { kcal: 80, defaultGrams: 0 },
+  rahka: { kcal: 60, defaultGrams: 0 }
 };
 
 let dayData;
 let isLocked = false;
 
 function emptyDay() {
-  return { foods:{aamupala:[],lounas:[],illallinen:[],iltapala:[]}, trainings:[] };
+  return {
+    foods: {
+      aamupala: [],
+      lounas: [],
+      valipalat: [],
+      illallinen: [],
+      iltapala: []
+    },
+    trainings: []
+  };
+}
+
+function applyDefaultGrams(meal) {
+  const sel = document.getElementById(meal + "Select");
+  const grams = document.getElementById(meal + "Grams");
+  if (sel.value) {
+    grams.value = foodsDB[sel.value].defaultGrams;
+  }
 }
 
 function addFood(meal) {
   if (isLocked) return;
-  const sel = document.getElementById(meal+"Select");
-  const grams = document.getElementById(meal+"Grams");
-  if (!sel.value || !grams.value) return;
+  const sel = document.getElementById(meal + "Select");
+  const grams = document.getElementById(meal + "Grams");
+  if (!sel.value || grams.value === "") return;
 
   dayData.foods[meal].push({
     id: sel.value,
@@ -160,36 +182,40 @@ function addFood(meal) {
   render();
 }
 
-function removeFood(meal,i){
-  if(isLocked) return;
-  dayData.foods[meal].splice(i,1);
-  saveDraft(); render();
+function removeFood(meal, i) {
+  if (isLocked) return;
+  dayData.foods[meal].splice(i, 1);
+  saveDraft();
+  render();
 }
 
-function addTraining(){
-  if(isLocked) return;
-  if(!trainingName.value||!trainingKcal.value) return;
-  dayData.trainings.push({name:trainingName.value,kcal:+trainingKcal.value});
-  trainingName.value=""; trainingKcal.value="";
-  saveDraft(); render();
+function addTraining() {
+  if (isLocked) return;
+  if (!trainingName.value || !trainingKcal.value) return;
+  dayData.trainings.push({ name: trainingName.value, kcal: +trainingKcal.value });
+  trainingName.value = "";
+  trainingKcal.value = "";
+  saveDraft();
+  render();
 }
 
-function removeTraining(i){
-  if(isLocked) return;
-  dayData.trainings.splice(i,1);
-  saveDraft(); render();
+function removeTraining(i) {
+  if (isLocked) return;
+  dayData.trainings.splice(i, 1);
+  saveDraft();
+  render();
 }
 
-function foodKcal(item){
-  return Math.round(item.grams * foodsDB[item.id] / 100);
+function foodKcal(item) {
+  return Math.round(item.grams * foodsDB[item.id].kcal / 100);
 }
 
-function render(){
-  for(let meal in dayData.foods){
-    const box=document.querySelector(`#${meal} .foods`);
-    box.innerHTML="";
-    dayData.foods[meal].forEach((f,i)=>{
-      box.innerHTML+=`
+function render() {
+  for (let meal in dayData.foods) {
+    const box = document.querySelector(`#${meal} .foods`);
+    box.innerHTML = "";
+    dayData.foods[meal].forEach((f, i) => {
+      box.innerHTML += `
       <div class="item">
         ${f.id} ${f.grams} g (${foodKcal(f)} kcal)
         <button onclick="removeFood('${meal}',${i})">❌</button>
@@ -197,21 +223,21 @@ function render(){
     });
   }
 
-  trainings.innerHTML="";
-  dayData.trainings.forEach((t,i)=>{
-    trainings.innerHTML+=`
+  trainings.innerHTML = "";
+  dayData.trainings.forEach((t, i) => {
+    trainings.innerHTML += `
     <div class="item">
       ${t.name} (${t.kcal} kcal)
       <button onclick="removeTraining(${i})">❌</button>
     </div>`;
   });
 
-  let food=0;
-  Object.values(dayData.foods).flat().forEach(f=>food+=foodKcal(f));
-  let train=dayData.trainings.reduce((s,t)=>s+t.kcal,0);
-  let net=food-(BMR+train);
+  let food = 0;
+  Object.values(dayData.foods).flat().forEach(f => food += foodKcal(f));
+  let train = dayData.trainings.reduce((s, t) => s + t.kcal, 0);
+  let net = food - (BMR + train);
 
-  summary.innerHTML=`
+  summary.innerHTML = `
   Ruoasta: ${food} kcal<br>
   Perusaineenvaihdunta: ${BMR} kcal<br>
   Treeneistä: ${train} kcal<br><br>
@@ -220,43 +246,61 @@ function render(){
   renderFiveDaySummary();
 }
 
-function renderFiveDaySummary(){
-  let html=`<h3>5 päivän koonti</h3><div class="summary-boxes">`;
-  let total=0;
+function renderFiveDaySummary() {
+  let html = `<h3>5 päivän koonti</h3><div class="summary-boxes">`;
+  let total = 0;
 
-  for(let i=1;i<=5;i++){
-    const d=new Date(date.value); d.setDate(d.getDate()-i);
-    const key=d.toISOString().split("T")[0];
-    const s=localStorage.getItem(key);
-    if(s){
-      const data=JSON.parse(s);
-      let food=0;
-      Object.values(data.foods).flat().forEach(f=>food+=foodKcal(f));
-      let train=data.trainings.reduce((s,t)=>s+t.kcal,0);
-      let net=food-(BMR+train);
-      total+=net;
-      html+=`<div class="summary-box ${net>0?"positive":net<0?"negative":"zero"}"><h4>-${i}</h4>${net} kcal</div>`;
+  for (let i = 1; i <= 5; i++) {
+    const d = new Date(date.value);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().split("T")[0];
+    const stored = localStorage.getItem(key);
+
+    if (stored) {
+      const data = JSON.parse(stored);
+      let food = 0;
+      Object.values(data.foods).flat().forEach(f => food += foodKcal(f));
+      let train = data.trainings.reduce((s, t) => s + t.kcal, 0);
+      let net = food - (BMR + train);
+      total += net;
+      html += `<div class="summary-box ${net > 0 ? "positive" : net < 0 ? "negative" : "zero"}"><h4>-${i}</h4>${net} kcal</div>`;
     } else {
-      html+=`<div class="summary-box nodata"><h4>-${i}</h4>Ei dataa</div>`;
+      html += `<div class="summary-box nodata"><h4>-${i}</h4>Ei dataa</div>`;
     }
   }
-  html+=`</div><br><strong>Yhteensä: ${total} kcal</strong>`;
-  fiveDaySummary.innerHTML=html;
+
+  html += `</div><br><strong>Yhteensä: ${total} kcal</strong>`;
+  fiveDaySummary.innerHTML = html;
 }
 
-function saveDraft(){ localStorage.setItem("draft-"+date.value,JSON.stringify(dayData)); }
-function saveDay(){
-  if(!date.value) return;
-  localStorage.setItem(date.value,JSON.stringify(dayData));
-  localStorage.removeItem("draft-"+date.value);
-  isLocked=true; content.classList.add("locked"); saveBtn.style.display="none";
+function saveDraft() {
+  localStorage.setItem("draft-" + date.value, JSON.stringify(dayData));
 }
 
-date.addEventListener("change",()=>{
-  const f=localStorage.getItem(date.value);
-  const d=localStorage.getItem("draft-"+date.value);
-  if(f){ dayData=JSON.parse(f); isLocked=true; content.classList.add("locked"); saveBtn.style.display="none"; }
-  else { isLocked=false; content.classList.remove("locked"); saveBtn.style.display="block"; dayData=d?JSON.parse(d):emptyDay(); }
+function saveDay() {
+  if (!date.value) return;
+  localStorage.setItem(date.value, JSON.stringify(dayData));
+  localStorage.removeItem("draft-" + date.value);
+  isLocked = true;
+  content.classList.add("locked");
+  saveBtn.style.display = "none";
+}
+
+date.addEventListener("change", () => {
+  const final = localStorage.getItem(date.value);
+  const draft = localStorage.getItem("draft-" + date.value);
+
+  if (final) {
+    dayData = JSON.parse(final);
+    isLocked = true;
+    content.classList.add("locked");
+    saveBtn.style.display = "none";
+  } else {
+    isLocked = false;
+    content.classList.remove("locked");
+    saveBtn.style.display = "block";
+    dayData = draft ? JSON.parse(draft) : emptyDay();
+  }
   render();
 });
 </script>
