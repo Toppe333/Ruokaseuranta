@@ -7,7 +7,7 @@
 <style>
 body {
   font-family: Arial, sans-serif;
-  max-width: 700px;
+  max-width: 750px;
   margin: auto;
   padding: 1rem;
 }
@@ -29,6 +29,9 @@ select, input, button {
 .item button {
   width: auto;
 }
+.meal-title {
+  margin-top: 0.5rem;
+}
 </style>
 </head>
 <body>
@@ -38,62 +41,95 @@ select, input, button {
 <label>Päivä</label>
 <input type="date" id="date">
 
-<div class="section">
-<h3>Lisää ruoka</h3>
+<!-- ATERIAT -->
 
-<select id="meal">
-  <option value="aamupala">Aamupala</option>
-  <option value="lounas">Lounas</option>
-  <option value="valipala1">Välipala</option>
-  <option value="valipala2">Välipala 2</option>
-  <option value="illallinen">Illallinen</option>
-  <option value="iltapala">Iltapala</option>
-</select>
-
-<select id="food">
-  <option value="kaurapuuro">Kaurapuuro (250 kcal)</option>
-  <option value="kanapasta">Kanapasta (600 kcal)</option>
-  <option value="rahka">Rahka (200 kcal)</option>
-  <option value="leipa">Leipä + levite (220 kcal)</option>
-  <option value="salaatti">Salaatti + proteiini (350 kcal)</option>
-  <option value="smoothie">Smoothie (300 kcal)</option>
-</select>
-
-<button onclick="addFood()">Lisää ruoka</button>
+<div class="section" id="aamupala">
+  <h3>Aamupala</h3>
+  <select onchange="addFood('aamupala', this.value)">
+    <option value="">Lisää ruoka</option>
+    <option value="kaurapuuro">Kaurapuuro (250 kcal)</option>
+    <option value="leipa">Leipä + levite (220 kcal)</option>
+    <option value="smoothie">Smoothie (300 kcal)</option>
+  </select>
+  <div class="foods"></div>
 </div>
 
-<div class="section">
-<h3>Ruoat</h3>
-<div id="foodsList"></div>
+<div class="section" id="lounas">
+  <h3>Lounas</h3>
+  <select onchange="addFood('lounas', this.value)">
+    <option value="">Lisää ruoka</option>
+    <option value="kanapasta">Kanapasta (600 kcal)</option>
+    <option value="salaatti">Salaatti + proteiini (350 kcal)</option>
+  </select>
+  <div class="foods"></div>
 </div>
 
-<div class="section">
-<h3>Lisää treeni</h3>
-<input type="text" id="trainingName" placeholder="Treenin nimi">
-<input type="number" id="trainingKcal" placeholder="Kulutus kcal">
-<button onclick="addTraining()">Lisää treeni</button>
+<div class="section" id="valipala1">
+  <h3>Välipala</h3>
+  <select onchange="addFood('valipala1', this.value)">
+    <option value="">Lisää ruoka</option>
+    <option value="rahka">Rahka (200 kcal)</option>
+    <option value="banaani">Banaani (100 kcal)</option>
+  </select>
+  <div class="foods"></div>
 </div>
 
+<div class="section" id="valipala2">
+  <h3>Välipala 2</h3>
+  <select onchange="addFood('valipala2', this.value)">
+    <option value="">Lisää ruoka</option>
+    <option value="rahka">Rahka (200 kcal)</option>
+    <option value="smoothie">Smoothie (300 kcal)</option>
+  </select>
+  <div class="foods"></div>
+</div>
+
+<div class="section" id="illallinen">
+  <h3>Illallinen</h3>
+  <select onchange="addFood('illallinen', this.value)">
+    <option value="">Lisää ruoka</option>
+    <option value="kanapasta">Kanapasta (600 kcal)</option>
+    <option value="salaatti">Salaatti + proteiini (350 kcal)</option>
+  </select>
+  <div class="foods"></div>
+</div>
+
+<div class="section" id="iltapala">
+  <h3>Iltapala</h3>
+  <select onchange="addFood('iltapala', this.value)">
+    <option value="">Lisää ruoka</option>
+    <option value="rahka">Rahka (200 kcal)</option>
+    <option value="leipa">Leipä + levite (220 kcal)</option>
+  </select>
+  <div class="foods"></div>
+</div>
+
+<!-- TREENIT -->
+
 <div class="section">
-<h3>Treenit</h3>
-<div id="trainingsList"></div>
+  <h3>Treenit</h3>
+  <input type="text" id="trainingName" placeholder="Treenin nimi">
+  <input type="number" id="trainingKcal" placeholder="Kulutus kcal">
+  <button onclick="addTraining()">Lisää treeni</button>
+  <div id="trainings"></div>
 </div>
 
 <button onclick="saveDay()">Tallenna päivä</button>
 
 <div class="section">
-<h3>Yhteenveto</h3>
-<div id="summary"></div>
+  <h3>Yhteenveto</h3>
+  <div id="summary"></div>
 </div>
 
 <script>
 const foodsDB = {
   kaurapuuro: 250,
-  kanapasta: 600,
-  rahka: 200,
   leipa: 220,
+  smoothie: 300,
+  kanapasta: 600,
   salaatti: 350,
-  smoothie: 300
+  rahka: 200,
+  banaani: 100
 };
 
 let dayData = {
@@ -108,9 +144,8 @@ let dayData = {
   trainings: []
 };
 
-function addFood() {
-  const meal = mealSelect.value;
-  const food = foodSelect.value;
+function addFood(meal, food) {
+  if (!food) return;
   dayData.foods[meal].push(food);
   renderFoods();
   updateSummary();
@@ -120,6 +155,20 @@ function removeFood(meal, index) {
   dayData.foods[meal].splice(index, 1);
   renderFoods();
   updateSummary();
+}
+
+function renderFoods() {
+  for (let meal in dayData.foods) {
+    const container = document.querySelector(`#${meal} .foods`);
+    container.innerHTML = "";
+    dayData.foods[meal].forEach((food, i) => {
+      container.innerHTML += `
+        <div class="item">
+          ${food} (${foodsDB[food]} kcal)
+          <button onclick="removeFood('${meal}', ${i})">❌</button>
+        </div>`;
+    });
+  }
 }
 
 function addTraining() {
@@ -140,25 +189,10 @@ function removeTraining(index) {
   updateSummary();
 }
 
-function renderFoods() {
-  foodsList.innerHTML = "";
-  for (let meal in dayData.foods) {
-    if (dayData.foods[meal].length === 0) continue;
-    foodsList.innerHTML += `<strong>${meal}</strong>`;
-    dayData.foods[meal].forEach((f, i) => {
-      foodsList.innerHTML += `
-        <div class="item">
-          ${f} (${foodsDB[f]} kcal)
-          <button onclick="removeFood('${meal}', ${i})">❌</button>
-        </div>`;
-    });
-  }
-}
-
 function renderTrainings() {
-  trainingsList.innerHTML = "";
+  trainings.innerHTML = "";
   dayData.trainings.forEach((t, i) => {
-    trainingsList.innerHTML += `
+    trainings.innerHTML += `
       <div class="item">
         ${t.name} (${t.kcal} kcal)
         <button onclick="removeTraining(${i})">❌</button>
@@ -171,26 +205,22 @@ function updateSummary() {
   for (let meal in dayData.foods) {
     dayData.foods[meal].forEach(f => foodKcal += foodsDB[f]);
   }
-
-  let trainingKcal = dayData.trainings.reduce((sum, t) => sum + t.kcal, 0);
-  let net = foodKcal - trainingKcal;
-
+  let trainingKcal = dayData.trainings.reduce((s, t) => s + t.kcal, 0);
   summary.innerHTML = `
     Ruoasta: ${foodKcal} kcal<br>
     Treeneistä: ${trainingKcal} kcal<br><br>
-    <strong>Netto: ${net} kcal</strong>
+    <strong>Netto: ${foodKcal - trainingKcal} kcal</strong>
   `;
 }
 
 function saveDay() {
-  const date = dateInput.value;
-  if (!date) return alert("Valitse päivä");
-  localStorage.setItem(date, JSON.stringify(dayData));
-  alert("Tallennettu");
+  if (!date.value) return alert("Valitse päivä");
+  localStorage.setItem(date.value, JSON.stringify(dayData));
+  alert("Päivä tallennettu");
 }
 
-dateInput.addEventListener("change", () => {
-  const saved = localStorage.getItem(dateInput.value);
+date.addEventListener("change", () => {
+  const saved = localStorage.getItem(date.value);
   if (saved) {
     dayData = JSON.parse(saved);
   } else {
@@ -210,15 +240,6 @@ dateInput.addEventListener("change", () => {
   renderTrainings();
   updateSummary();
 });
-
-const mealSelect = document.getElementById("meal");
-const foodSelect = document.getElementById("food");
-const foodsList = document.getElementById("foodsList");
-const trainingsList = document.getElementById("trainingsList");
-const trainingName = document.getElementById("trainingName");
-const trainingKcal = document.getElementById("trainingKcal");
-const summary = document.getElementById("summary");
-const dateInput = document.getElementById("date");
 </script>
 
 </body>
