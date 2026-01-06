@@ -20,17 +20,19 @@ select, input, button { padding: 0.4rem; }
 .summary-box.negative { background:#fbeaea; color:#8a1f1f; }
 .summary-box.zero { background:#eee; color:#333; }
 .summary-box.nodata { background:#f5f5f5; color:#777; font-style:italic; }
-#backupBtn { float:right; margin-bottom:1rem; }
+#backupBtn, #unlockBtn { float:right; margin-bottom:1rem; }
 </style>
 </head>
 <body>
 
 <h2>Ruokaseuranta</h2>
-<h4>versio 1.1</h4>  
+<h4>versio 1.2</h4>
 <button id="backupBtn" onclick="downloadCSV()">Varmuuskopioi CSV</button>
 
 <label>Päivä</label>
 <input type="date" id="date">
+<br>
+<button id="unlockBtn" style="display:none;" onclick="unlockDay()">Muokkaa tietoja</button>
 
 <div id="content">
 
@@ -113,7 +115,6 @@ select, input, button { padding: 0.4rem; }
 <script>
 const BMR = 2000;
 
-// Ruoat: kcal / 100g ja oletusgrammat
 const foodsDB = {
   appelsiini: { kcal:75, default:100 },
   kauraleipa: { kcal:120, default:100 },
@@ -145,23 +146,17 @@ const mealFoods = {
 
 let dayData, isLocked=false;
 
-function emptyDay(){
-  return { foods:{aamupala:[],lounas:[],valipalat:[],illallinen:[],iltapala:[]}, trainings:[] };
-}
+function emptyDay(){ return { foods:{aamupala:[],lounas:[],valipalat:[],illallinen:[],iltapala:[]}, trainings:[] }; }
 
-// Täyttää select-valikot
 function fillSelects(){
   for(let meal in mealFoods){
     const sel=document.getElementById(meal+"Select");
     sel.innerHTML='<option value="">Valitse ruoka</option>';
-    mealFoods[meal].sort().forEach(f=>{
-      sel.innerHTML+=`<option value="${f}">${f.replaceAll("_"," ")}</option>`;
-    });
+    mealFoods[meal].sort().forEach(f=>{ sel.innerHTML+=`<option value="${f}">${f.replaceAll("_"," ")}</option>`; });
   }
 }
 fillSelects();
 
-// Oletusgrammat valinnan yhteydessä
 function attachDefaultGrams() {
   const meals = ["aamupala","lounas","valipalat","illallinen","iltapala"];
   meals.forEach(meal=>{
@@ -181,17 +176,12 @@ function addFood(meal){
   const gramsInput=document.getElementById(meal+"Grams");
   if(!sel.value) return;
   const grams=Number(gramsInput.value);
-  if(isNaN(grams) || grams <= 0) return;
-  dayData.foods[meal].push({id:sel.value, grams});
+  if(isNaN(grams) || grams <=0) return;
+  dayData.foods[meal].push({id:sel.value,grams});
   gramsInput.value=""; sel.value="";
   saveDraft(); render();
 }
-
-function removeFood(meal,i){
-  if(isLocked) return;
-  dayData.foods[meal].splice(i,1);
-  saveDraft(); render();
-}
+function removeFood(meal,i){ if(isLocked) return; dayData.foods[meal].splice(i,1); saveDraft(); render(); }
 
 function addTraining(){ 
   if(isLocked) return; 
@@ -199,11 +189,7 @@ function addTraining(){
   dayData.trainings.push({name:trainingName.value,kcal:Number(trainingKcal.value)});
   trainingName.value=""; trainingKcal.value=""; saveDraft(); render();
 }
-
-function removeTraining(i){
-  if(isLocked) return;
-  dayData.trainings.splice(i,1); saveDraft(); render();
-}
+function removeTraining(i){ if(isLocked) return; dayData.trainings.splice(i,1); saveDraft(); render(); }
 
 // ==================================
 // Renderöinti: ruoka ja treenit
@@ -286,8 +272,7 @@ function downloadCSV() {
   }
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
   const link=document.createElement("a");
-  const url=URL.createObjectURL(blob);
-  link.setAttribute("href",url);
+  link.setAttribute("href",URL.createObjectURL(blob));
   link.setAttribute("download","ruokaseuranta_backup.csv");
   document.body.appendChild(link);
   link.click();
@@ -297,13 +282,25 @@ function downloadCSV() {
 // ==================================
 function saveDraft(){ localStorage.setItem("draft-"+date.value,JSON.stringify(dayData)); }
 function saveDay(){ localStorage.setItem(date.value,JSON.stringify(dayData)); localStorage.removeItem("draft-"+date.value); lockDay(); }
-function lockDay(){ isLocked=true; content.classList.add("locked"); saveBtn.style.display="none"; }
+function lockDay(){ isLocked=true; content.classList.add("locked"); saveBtn.style.display="none"; unlockBtn.style.display="block"; }
+
+function unlockDay(){
+  isLocked=false;
+  content.classList.remove("locked");
+  saveBtn.style.display="block";
+  unlockBtn.style.display="none";
+}
 
 date.addEventListener("change",()=>{
   const f=localStorage.getItem(date.value);
   const d=localStorage.getItem("draft-"+date.value);
-  if(f){ dayData=JSON.parse(f); lockDay(); }
-  else { isLocked=false; content.classList.remove("locked"); saveBtn.style.display="block"; dayData=d?JSON.parse(d):emptyDay(); }
+  if(f){
+    dayData=JSON.parse(f); 
+    lockDay(); // lukitsee ja näyttää unlock-painikkeen
+  } else { 
+    isLocked=false; content.classList.remove("locked"); saveBtn.style.display="block"; unlockBtn.style.display="none";
+    dayData=d?JSON.parse(d):emptyDay(); 
+  }
   render();
 });
 </script>
