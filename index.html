@@ -39,6 +39,21 @@ select, input, button {
   opacity: 0.6;
   pointer-events: none;
 }
+.summary-boxes {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+.summary-box {
+  border: 1px solid #ccc;
+  padding: 0.5rem;
+  min-width: 90px;
+  text-align: center;
+}
+.summary-box h4 {
+  margin: 0 0 0.3rem 0;
+}
 </style>
 </head>
 <body>
@@ -49,8 +64,6 @@ select, input, button {
 <input type="date" id="date">
 
 <div id="content">
-
-<!-- ATERIAT -->
 
 <div class="section" id="aamupala">
   <h3>Aamupala</h3>
@@ -105,8 +118,6 @@ select, input, button {
   <div class="foods"></div>
 </div>
 
-<!-- TREENIT -->
-
 <div class="section">
   <h3>Treenit</h3>
   <div class="training-controls">
@@ -122,19 +133,17 @@ select, input, button {
 <div class="section">
   <h3>Yhteenveto</h3>
   <div id="summary"></div>
+  <div id="fiveDaySummary"></div>
 </div>
 
 </div>
 
 <script>
+const BMR = 1550;
 
-const BMR = 1550; // perusaineenvaihdunta kcal / päivä  
-  
 const foodsDB = {
-  kaurapuuro_banaani: 450,
-  kaurapuuro_piltti: 383,
-  ruisleipa: 96,
-  kauraleipa: 120,
+  kaurapuuro: 250,
+  leipa: 220,
   smoothie: 300,
   kanapasta: 600,
   salaatti: 350,
@@ -149,10 +158,6 @@ function emptyDay() {
     foods: { aamupala: [], lounas: [], illallinen: [], iltapala: [] },
     trainings: []
   };
-}
-
-function storageKey(date) {
-  return isLocked ? date : "draft-" + date;
 }
 
 function addFood(meal) {
@@ -215,23 +220,45 @@ function render() {
   });
 
   let foodKcal = 0;
-Object.values(dayData.foods).flat().forEach(f => foodKcal += foodsDB[f]);
+  Object.values(dayData.foods).flat().forEach(f => foodKcal += foodsDB[f]);
+  let trainKcal = dayData.trainings.reduce((s, t) => s + t.kcal, 0);
+  let net = foodKcal - (BMR + trainKcal);
 
-let trainKcal = dayData.trainings.reduce((s, t) => s + t.kcal, 0);
+  summary.innerHTML = `
+    Ruoasta: ${foodKcal} kcal<br>
+    Perusaineenvaihdunta: ${BMR} kcal<br>
+    Treeneistä: ${trainKcal} kcal<br><br>
+    <strong>Netto: ${net} kcal</strong>
+  `;
 
-// kokonaiskulutus = perusaineenvaihdunta + treeni
-let totalBurn = BMR + trainKcal;
+  renderFiveDaySummary();
+}
 
-// energiatase
-let net = foodKcal - totalBurn;
+function renderFiveDaySummary() {
+  let html = `<h3>5 päivän koonti</h3><div class="summary-boxes">`;
+  let total = 0;
 
-summary.innerHTML = `
-  Ruoasta: ${foodKcal} kcal<br>
-  Perusaineenvaihdunta: ${BMR} kcal<br>
-  Treeneistä: ${trainKcal} kcal<br><br>
-  <strong>Netto: ${net} kcal</strong>
-`;
+  for (let i = 1; i <= 5; i++) {
+    const d = new Date(date.value);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().split("T")[0];
+    const stored = localStorage.getItem(key);
 
+    if (stored) {
+      const data = JSON.parse(stored);
+      let food = 0;
+      Object.values(data.foods).flat().forEach(f => food += foodsDB[f]);
+      let train = data.trainings.reduce((s, t) => s + t.kcal, 0);
+      let net = food - (BMR + train);
+      total += net;
+      html += `<div class="summary-box"><h4>-${i}</h4>${net} kcal</div>`;
+    } else {
+      html += `<div class="summary-box"><h4>-${i}</h4>Ei dataa</div>`;
+    }
+  }
+
+  html += `</div><br><strong>Yhteensä: ${total} kcal</strong>`;
+  fiveDaySummary.innerHTML = html;
 }
 
 function saveDraft() {
@@ -247,7 +274,7 @@ function saveDay() {
 
 function lockDay() {
   isLocked = true;
-  document.getElementById("content").classList.add("locked");
+  content.classList.add("locked");
   saveBtn.style.display = "none";
 }
 
@@ -260,7 +287,7 @@ date.addEventListener("change", () => {
     lockDay();
   } else {
     isLocked = false;
-    document.getElementById("content").classList.remove("locked");
+    content.classList.remove("locked");
     saveBtn.style.display = "block";
     dayData = draft ? JSON.parse(draft) : emptyDay();
   }
