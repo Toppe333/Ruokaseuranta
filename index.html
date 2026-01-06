@@ -142,7 +142,7 @@ select, input, button {
 <script>
 const BMR = 2000;
 
-/* kcal / 100g + oletusgrammat */
+// Ruoat: kcal / 100g ja oletusgrammat
 const foodsDB = {
   // AAMUPALA / VÄLIPALA / ILTAPALA
   appelsiini: { kcal:75, default:100 },
@@ -191,12 +191,32 @@ function fillSelects(){
 }
 fillSelects();
 
+// ============================================
+// LISÄTTY: oletusgrammat täyttyvät valinnan yhteydessä
+function attachDefaultGrams() {
+  const meals = ["aamupala", "lounas", "valipalat", "illallinen", "iltapala"];
+  meals.forEach(meal => {
+    const select = document.getElementById(meal + "Select");
+    const gramsInput = document.getElementById(meal + "Grams");
+    select.addEventListener("change", () => {
+      if(select.value) {
+        gramsInput.value = foodsDB[select.value].default;
+      } else {
+        gramsInput.value = "";
+      }
+    });
+  });
+}
+attachDefaultGrams();
+// ============================================
+
 function addFood(meal){
   if(isLocked) return;
   const sel=document.getElementById(meal+"Select");
   const gramsInput=document.getElementById(meal+"Grams");
   if(!sel.value) return;
-  const grams=Number(gramsInput.value || foodsDB[sel.value].default);
+  const grams=Number(gramsInput.value);
+  if(isNaN(grams) || grams <= 0) return; // turva
   dayData.foods[meal].push({ id:sel.value, grams });
   gramsInput.value="";
   sel.value="";
@@ -211,10 +231,7 @@ function render(){
     dayData.foods[meal].forEach((f,i)=>{
       const kcal=f.grams*foodsDB[f.id].kcal/100;
       foodKcal+=kcal;
-      box.innerHTML+=`
-      <div class="item">
-      ${f.id.replaceAll("_"," ")} ${f.grams} g (${Math.round(kcal)} kcal)
-      </div>`;
+      box.innerHTML+=`<div class="item">${f.id.replaceAll("_"," ")} ${f.grams} g (${Math.round(kcal)} kcal)</div>`;
     });
   }
 
@@ -249,6 +266,13 @@ function renderFiveDaySummary(){
   }
   html+=`</div><br><strong>Yhteensä: ${total} kcal</strong>`;
   fiveDaySummary.innerHTML=html;
+}
+
+function addTraining(){ 
+  if(isLocked) return; 
+  if(!trainingName.value || !trainingKcal.value) return; 
+  dayData.trainings.push({ name: trainingName.value, kcal: Number(trainingKcal.value) });
+  trainingName.value=""; trainingKcal.value=""; saveDraft(); render();
 }
 
 function saveDraft(){ localStorage.setItem("draft-"+date.value,JSON.stringify(dayData)); }
