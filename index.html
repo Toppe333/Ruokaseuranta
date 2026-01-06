@@ -54,6 +54,28 @@ select, input, button {
 .summary-box h4 {
   margin: 0 0 0.3rem 0;
 }
+
+  .summary-box.positive {
+  background: #e6f4ea;
+  color: #1e6b3a;
+}
+
+.summary-box.negative {
+  background: #fbeaea;
+  color: #8a1f1f;
+}
+
+.summary-box.zero {
+  background: #eeeeee;
+  color: #333;
+}
+
+.summary-box.nodata {
+  background: #f5f5f5;
+  color: #777;
+  font-style: italic;
+}
+
 </style>
 </head>
 <body>
@@ -251,15 +273,29 @@ function renderFiveDaySummary() {
       let train = data.trainings.reduce((s, t) => s + t.kcal, 0);
       let net = food - (BMR + train);
       total += net;
-      html += `<div class="summary-box"><h4>-${i}</h4>${net} kcal</div>`;
+
+      let cls = "zero";
+      if (net > 0) cls = "positive";
+      else if (net < 0) cls = "negative";
+
+      html += `
+        <div class="summary-box ${cls}">
+          <h4>-${i}</h4>
+          ${net} kcal
+        </div>`;
     } else {
-      html += `<div class="summary-box"><h4>-${i}</h4>Ei dataa</div>`;
+      html += `
+        <div class="summary-box nodata">
+          <h4>-${i}</h4>
+          Ei dataa
+        </div>`;
     }
   }
 
   html += `</div><br><strong>Yhteensä: ${total} kcal</strong>`;
   fiveDaySummary.innerHTML = html;
 }
+
 
 function saveDraft() {
   localStorage.setItem("draft-" + date.value, JSON.stringify(dayData));
