@@ -40,7 +40,6 @@ select, input, button {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
-  margin-top: 0.5rem;
 }
 .summary-box {
   border: 1px solid #ccc;
@@ -64,66 +63,78 @@ select, input, button {
 
 <div id="content">
 
-<!-- ATERIAT -->
-<script>
-function mealSection(id, title, options) {
-  document.write(`
-  <div class="section" id="${id}">
-    <h3>${title}</h3>
-    <div class="meal-controls">
-      <select id="${id}Select" onchange="applyDefaultGrams('${id}')">
-        <option value="">Valitse ruoka</option>
-        ${options}
-      </select>
-      <input type="number" id="${id}Grams" placeholder="g" style="width:70px">
-      <button onclick="addFood('${id}')">Lisää</button>
-    </div>
-    <div class="foods"></div>
-  </div>`);
-}
-</script>
+<!-- AAMUPALA -->
+<div class="section" id="aamupala">
+<h3>Aamupala</h3>
+<div class="meal-controls">
+<select id="aamupalaSelect"></select>
+<input type="number" id="aamupalaGrams" placeholder="g">
+<button onclick="addFood('aamupala')">Lisää</button>
+</div>
+<div class="foods"></div>
+</div>
 
-<script>
-mealSection("aamupala","Aamupala",`
-<option value="kaurapuuro">Kaurapuuro</option>
-<option value="leipa">Leipä</option>
-<option value="smoothie">Smoothie</option>`);
+<!-- LOUNAS -->
+<div class="section" id="lounas">
+<h3>Lounas</h3>
+<div class="meal-controls">
+<select id="lounasSelect"></select>
+<input type="number" id="lounasGrams" placeholder="g">
+<button onclick="addFood('lounas')">Lisää</button>
+</div>
+<div class="foods"></div>
+</div>
 
-mealSection("lounas","Lounas",`
-<option value="kanapasta">Kanapasta</option>
-<option value="salaatti">Salaatti</option>`);
+<!-- VÄLIPALAT -->
+<div class="section" id="valipalat">
+<h3>Välipalat</h3>
+<div class="meal-controls">
+<select id="valipalatSelect"></select>
+<input type="number" id="valipalatGrams" placeholder="g">
+<button onclick="addFood('valipalat')">Lisää</button>
+</div>
+<div class="foods"></div>
+</div>
 
-mealSection("valipalat","Välipalat",`
-<option value="rahka">Rahka</option>
-<option value="leipa">Leipä</option>
-<option value="smoothie">Smoothie</option>`);
+<!-- ILLALLINEN -->
+<div class="section" id="illallinen">
+<h3>Illallinen</h3>
+<div class="meal-controls">
+<select id="illallinenSelect"></select>
+<input type="number" id="illallinenGrams" placeholder="g">
+<button onclick="addFood('illallinen')">Lisää</button>
+</div>
+<div class="foods"></div>
+</div>
 
-mealSection("illallinen","Illallinen",`
-<option value="kanapasta">Kanapasta</option>
-<option value="salaatti">Salaatti</option>`);
-
-mealSection("iltapala","Iltapala",`
-<option value="rahka">Rahka</option>
-<option value="leipa">Leipä</option>`);
-</script>
+<!-- ILTAPALA -->
+<div class="section" id="iltapala">
+<h3>Iltapala</h3>
+<div class="meal-controls">
+<select id="iltapalaSelect"></select>
+<input type="number" id="iltapalaGrams" placeholder="g">
+<button onclick="addFood('iltapala')">Lisää</button>
+</div>
+<div class="foods"></div>
+</div>
 
 <!-- TREENIT -->
 <div class="section">
-  <h3>Treenit</h3>
-  <div class="training-controls">
-    <input id="trainingName" placeholder="Treenin nimi">
-    <input id="trainingKcal" type="number" placeholder="kcal">
-    <button onclick="addTraining()">Lisää</button>
-  </div>
-  <div id="trainings"></div>
+<h3>Treenit</h3>
+<div class="training-controls">
+<input id="trainingName" placeholder="Treenin nimi">
+<input id="trainingKcal" type="number" placeholder="kcal">
+<button onclick="addTraining()">Lisää</button>
+</div>
+<div id="trainings"></div>
 </div>
 
 <button id="saveBtn" onclick="saveDay()">Tallenna päivä</button>
 
 <div class="section">
-  <h3>Yhteenveto</h3>
-  <div id="summary"></div>
-  <div id="fiveDaySummary"></div>
+<h3>Yhteenveto</h3>
+<div id="summary"></div>
+<div id="fiveDaySummary"></div>
 </div>
 
 </div>
@@ -131,176 +142,124 @@ mealSection("iltapala","Iltapala",`
 <script>
 const BMR = 2000;
 
-// kcal / 100 g + oletusgrammat
+/* kcal / 100g + oletusgrammat */
 const foodsDB = {
-  kaurapuuro: { kcal: 60, defaultGrams: 0 },
-  leipa: { kcal: 240, defaultGrams: 0 },
-  smoothie: { kcal: 70, defaultGrams: 0 },
-  kanapasta: { kcal: 160, defaultGrams: 0 },
-  salaatti: { kcal: 80, defaultGrams: 0 },
-  rahka: { kcal: 60, defaultGrams: 0 }
+  // AAMUPALA / VÄLIPALA / ILTAPALA
+  appelsiini: { kcal:75, default:100 },
+  kauraleipa: { kcal:120, default:100 },
+  kaurapuuro_banaani: { kcal:450, default:100 },
+  kaurapuuro_piltti: { kcal:383, default:100 },
+  mehukeitto: { kcal:44, default:400 },
+  ruisleipa: { kcal:96, default:100 },
+
+  // LOUNAS / ILLALLINEN
+  gluteeniton_pasta: { kcal:356, default:0 },
+  kanakastike_kevyt: { kcal:95, default:0 },
+  kanakastike_semi: { kcal:120, default:0 },
+  kanakastike_tuhti: { kcal:150, default:0 },
+  kanaperuna: { kcal:83, default:0 },
+  lasagne: { kcal:120, default:0 },
+  peruna: { kcal:75, default:0 },
+  perunamuussi: { kcal:120, default:0 },
+  tonnikalapihvit: { kcal:170, default:0 },
+  täysjyväpasta: { kcal:343, default:0 },
+  täysjyväriisi: { kcal:145, default:0 }
 };
 
-let dayData;
-let isLocked = false;
+const mealFoods = {
+  aamupala: ["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa"],
+  valipalat: ["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa"],
+  iltapala: ["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa"],
+  lounas: ["gluteeniton_pasta","kanakastike_kevyt","kanakastike_semi","kanakastike_tuhti","kanaperuna","lasagne","peruna","perunamuussi","tonnikalapihvit","täysjyväpasta","täysjyväriisi"],
+  illallinen: ["gluteeniton_pasta","kanakastike_kevyt","kanakastike_semi","kanakastike_tuhti","kanaperuna","lasagne","peruna","perunamuussi","tonnikalapihvit","täysjyväpasta","täysjyväriisi"]
+};
 
-function emptyDay() {
-  return {
-    foods: {
-      aamupala: [],
-      lounas: [],
-      valipalat: [],
-      illallinen: [],
-      iltapala: []
-    },
-    trainings: []
-  };
+let dayData, isLocked=false;
+
+function emptyDay(){
+  return { foods:{aamupala:[],lounas:[],valipalat:[],illallinen:[],iltapala:[]}, trainings:[] };
 }
 
-function applyDefaultGrams(meal) {
-  const sel = document.getElementById(meal + "Select");
-  const grams = document.getElementById(meal + "Grams");
-  if (sel.value) {
-    grams.value = foodsDB[sel.value].defaultGrams;
+function fillSelects(){
+  for(let meal in mealFoods){
+    const sel=document.getElementById(meal+"Select");
+    sel.innerHTML='<option value="">Valitse ruoka</option>';
+    mealFoods[meal].sort().forEach(f=>{
+      sel.innerHTML+=`<option value="${f}">${f.replaceAll("_"," ")}</option>`;
+    });
   }
 }
+fillSelects();
 
-function addFood(meal) {
-  if (isLocked) return;
-  const sel = document.getElementById(meal + "Select");
-  const grams = document.getElementById(meal + "Grams");
-  if (!sel.value || grams.value === "") return;
-
-  dayData.foods[meal].push({
-    id: sel.value,
-    grams: Number(grams.value)
-  });
-
-  sel.value = "";
-  grams.value = "";
-  saveDraft();
-  render();
+function addFood(meal){
+  if(isLocked) return;
+  const sel=document.getElementById(meal+"Select");
+  const gramsInput=document.getElementById(meal+"Grams");
+  if(!sel.value) return;
+  const grams=Number(gramsInput.value || foodsDB[sel.value].default);
+  dayData.foods[meal].push({ id:sel.value, grams });
+  gramsInput.value="";
+  sel.value="";
+  saveDraft(); render();
 }
 
-function removeFood(meal, i) {
-  if (isLocked) return;
-  dayData.foods[meal].splice(i, 1);
-  saveDraft();
-  render();
-}
-
-function addTraining() {
-  if (isLocked) return;
-  if (!trainingName.value || !trainingKcal.value) return;
-  dayData.trainings.push({ name: trainingName.value, kcal: +trainingKcal.value });
-  trainingName.value = "";
-  trainingKcal.value = "";
-  saveDraft();
-  render();
-}
-
-function removeTraining(i) {
-  if (isLocked) return;
-  dayData.trainings.splice(i, 1);
-  saveDraft();
-  render();
-}
-
-function foodKcal(item) {
-  return Math.round(item.grams * foodsDB[item.id].kcal / 100);
-}
-
-function render() {
-  for (let meal in dayData.foods) {
-    const box = document.querySelector(`#${meal} .foods`);
-    box.innerHTML = "";
-    dayData.foods[meal].forEach((f, i) => {
-      box.innerHTML += `
+function render(){
+  let foodKcal=0;
+  for(let meal in dayData.foods){
+    const box=document.querySelector(`#${meal} .foods`);
+    box.innerHTML="";
+    dayData.foods[meal].forEach((f,i)=>{
+      const kcal=f.grams*foodsDB[f.id].kcal/100;
+      foodKcal+=kcal;
+      box.innerHTML+=`
       <div class="item">
-        ${f.id} ${f.grams} g (${foodKcal(f)} kcal)
-        <button onclick="removeFood('${meal}',${i})">❌</button>
+      ${f.id.replaceAll("_"," ")} ${f.grams} g (${Math.round(kcal)} kcal)
       </div>`;
     });
   }
 
-  trainings.innerHTML = "";
-  dayData.trainings.forEach((t, i) => {
-    trainings.innerHTML += `
-    <div class="item">
-      ${t.name} (${t.kcal} kcal)
-      <button onclick="removeTraining(${i})">❌</button>
-    </div>`;
-  });
+  let trainKcal=dayData.trainings.reduce((s,t)=>s+t.kcal,0);
+  let net=Math.round(foodKcal-(BMR+trainKcal));
 
-  let food = 0;
-  Object.values(dayData.foods).flat().forEach(f => food += foodKcal(f));
-  let train = dayData.trainings.reduce((s, t) => s + t.kcal, 0);
-  let net = food - (BMR + train);
-
-  summary.innerHTML = `
-  Ruoasta: ${food} kcal<br>
+  summary.innerHTML=`
+  Ruoasta: ${Math.round(foodKcal)} kcal<br>
   Perusaineenvaihdunta: ${BMR} kcal<br>
-  Treeneistä: ${train} kcal<br><br>
+  Treeneistä: ${trainKcal} kcal<br><br>
   <strong>Netto: ${net} kcal</strong>`;
-
   renderFiveDaySummary();
 }
 
-function renderFiveDaySummary() {
-  let html = `<h3>5 päivän koonti</h3><div class="summary-boxes">`;
-  let total = 0;
-
-  for (let i = 1; i <= 5; i++) {
-    const d = new Date(date.value);
-    d.setDate(d.getDate() - i);
-    const key = d.toISOString().split("T")[0];
-    const stored = localStorage.getItem(key);
-
-    if (stored) {
-      const data = JSON.parse(stored);
-      let food = 0;
-      Object.values(data.foods).flat().forEach(f => food += foodKcal(f));
-      let train = data.trainings.reduce((s, t) => s + t.kcal, 0);
-      let net = food - (BMR + train);
-      total += net;
-      html += `<div class="summary-box ${net > 0 ? "positive" : net < 0 ? "negative" : "zero"}"><h4>-${i}</h4>${net} kcal</div>`;
+function renderFiveDaySummary(){
+  let html=`<h3>5 päivän koonti</h3><div class="summary-boxes">`, total=0;
+  for(let i=1;i<=5;i++){
+    const d=new Date(date.value); d.setDate(d.getDate()-i);
+    const key=d.toISOString().split("T")[0];
+    const stored=localStorage.getItem(key);
+    if(stored){
+      const data=JSON.parse(stored);
+      let fkc=0;
+      Object.values(data.foods).flat().forEach(f=>fkc+=f.grams*foodsDB[f.id].kcal/100);
+      let tk=data.trainings.reduce((s,t)=>s+t.kcal,0);
+      let n=Math.round(fkc-(BMR+tk)); total+=n;
+      let cls=n>0?"positive":n<0?"negative":"zero";
+      html+=`<div class="summary-box ${cls}"><h4>-${i}</h4>${n} kcal</div>`;
     } else {
-      html += `<div class="summary-box nodata"><h4>-${i}</h4>Ei dataa</div>`;
+      html+=`<div class="summary-box nodata"><h4>-${i}</h4>Ei dataa</div>`;
     }
   }
-
-  html += `</div><br><strong>Yhteensä: ${total} kcal</strong>`;
-  fiveDaySummary.innerHTML = html;
+  html+=`</div><br><strong>Yhteensä: ${total} kcal</strong>`;
+  fiveDaySummary.innerHTML=html;
 }
 
-function saveDraft() {
-  localStorage.setItem("draft-" + date.value, JSON.stringify(dayData));
-}
+function saveDraft(){ localStorage.setItem("draft-"+date.value,JSON.stringify(dayData)); }
+function saveDay(){ localStorage.setItem(date.value,JSON.stringify(dayData)); lockDay(); }
+function lockDay(){ isLocked=true; content.classList.add("locked"); saveBtn.style.display="none"; }
 
-function saveDay() {
-  if (!date.value) return;
-  localStorage.setItem(date.value, JSON.stringify(dayData));
-  localStorage.removeItem("draft-" + date.value);
-  isLocked = true;
-  content.classList.add("locked");
-  saveBtn.style.display = "none";
-}
-
-date.addEventListener("change", () => {
-  const final = localStorage.getItem(date.value);
-  const draft = localStorage.getItem("draft-" + date.value);
-
-  if (final) {
-    dayData = JSON.parse(final);
-    isLocked = true;
-    content.classList.add("locked");
-    saveBtn.style.display = "none";
-  } else {
-    isLocked = false;
-    content.classList.remove("locked");
-    saveBtn.style.display = "block";
-    dayData = draft ? JSON.parse(draft) : emptyDay();
-  }
+date.addEventListener("change",()=>{
+  const f=localStorage.getItem(date.value);
+  const d=localStorage.getItem("draft-"+date.value);
+  if(f){ dayData=JSON.parse(f); lockDay(); }
+  else { isLocked=false; content.classList.remove("locked"); saveBtn.style.display="block"; dayData=d?JSON.parse(d):emptyDay(); }
   render();
 });
 </script>
