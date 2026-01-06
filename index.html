@@ -12,34 +12,32 @@ body {
   margin: auto;
   padding: 1rem;
 }
-
 .section {
   border: 1px solid #ccc;
   padding: 1rem;
   margin-top: 1rem;
 }
-
-.meal-controls {
+.meal-controls, .training-controls {
   display: flex;
   gap: 0.5rem;
 }
-
 select, input, button {
   padding: 0.4rem;
 }
-
 .meal-controls select {
   flex: 1;
 }
-
 .item {
   display: flex;
   justify-content: space-between;
   margin-top: 0.3rem;
 }
-
 .item button {
   width: auto;
+}
+.locked {
+  opacity: 0.6;
+  pointer-events: none;
 }
 </style>
 </head>
@@ -49,6 +47,8 @@ select, input, button {
 
 <label>Päivä</label>
 <input type="date" id="date">
+
+<div id="content">
 
 <!-- ATERIAT -->
 
@@ -75,19 +75,6 @@ select, input, button {
       <option value="salaatti">Salaatti + proteiini (350 kcal)</option>
     </select>
     <button onclick="addFood('lounas')">Lisää</button>
-  </div>
-  <div class="foods"></div>
-</div>
-
-<div class="section" id="valipala1">
-  <h3>Välipala</h3>
-  <div class="meal-controls">
-    <select id="valipala1Select">
-      <option value="">Valitse ruoka</option>
-      <option value="rahka">Rahka (200 kcal)</option>
-      <option value="banaani">Banaani (100 kcal)</option>
-    </select>
-    <button onclick="addFood('valipala1')">Lisää</button>
   </div>
   <div class="foods"></div>
 </div>
@@ -122,17 +109,21 @@ select, input, button {
 
 <div class="section">
   <h3>Treenit</h3>
-  <input type="text" id="trainingName" placeholder="Treenin nimi">
-  <input type="number" id="trainingKcal" placeholder="Kulutus kcal">
-  <button onclick="addTraining()">Lisää treeni</button>
+  <div class="training-controls">
+    <input type="text" id="trainingName" placeholder="Treenin nimi">
+    <input type="number" id="trainingKcal" placeholder="kcal">
+    <button onclick="addTraining()">Lisää</button>
+  </div>
   <div id="trainings"></div>
 </div>
 
-<button onclick="saveDay()">Tallenna päivä</button>
+<button id="saveBtn" onclick="saveDay()">Tallenna päivä</button>
 
 <div class="section">
   <h3>Yhteenveto</h3>
   <div id="summary"></div>
+</div>
+
 </div>
 
 <script>
@@ -142,55 +133,42 @@ const foodsDB = {
   smoothie: 300,
   kanapasta: 600,
   salaatti: 350,
-  rahka: 200,
-  banaani: 100
+  rahka: 200
 };
 
-let dayData = {
-  foods: {
-    aamupala: [],
-    lounas: [],
-    valipala1: [],
-    illallinen: [],
-    iltapala: []
-  },
-  trainings: []
-};
+let dayData;
+let isLocked = false;
+
+function emptyDay() {
+  return {
+    foods: { aamupala: [], lounas: [], illallinen: [], iltapala: [] },
+    trainings: []
+  };
+}
+
+function storageKey(date) {
+  return isLocked ? date : "draft-" + date;
+}
 
 function addFood(meal) {
+  if (isLocked) return;
   const select = document.getElementById(meal + "Select");
-  const food = select.value;
-  if (!food) return;
-
-  dayData.foods[meal].push(food);
-  select.value = ""; // palautetaan tyhjäksi
-  renderFoods();
-  updateSummary();
+  if (!select.value) return;
+  dayData.foods[meal].push(select.value);
+  select.value = "";
+  saveDraft();
+  render();
 }
 
-function removeFood(meal, index) {
-  dayData.foods[meal].splice(index, 1);
-  renderFoods();
-  updateSummary();
-}
-
-function renderFoods() {
-  for (let meal in dayData.foods) {
-    const container = document.querySelector(`#${meal} .foods`);
-    container.innerHTML = "";
-
-    dayData.foods[meal].forEach((food, i) => {
-      container.innerHTML += `
-        <div class="item">
-          ${food} (${foodsDB[food]} kcal)
-          <button onclick="removeFood('${meal}', ${i})">❌</button>
-        </div>
-      `;
-    });
-  }
+function removeFood(meal, i) {
+  if (isLocked) return;
+  dayData.foods[meal].splice(i, 1);
+  saveDraft();
+  render();
 }
 
 function addTraining() {
+  if (isLocked) return;
   if (!trainingName.value || !trainingKcal.value) return;
   dayData.trainings.push({
     name: trainingName.value,
@@ -198,56 +176,80 @@ function addTraining() {
   });
   trainingName.value = "";
   trainingKcal.value = "";
-  renderTrainings();
-  updateSummary();
+  saveDraft();
+  render();
 }
 
 function removeTraining(i) {
+  if (isLocked) return;
   dayData.trainings.splice(i, 1);
-  renderTrainings();
-  updateSummary();
+  saveDraft();
+  render();
 }
 
-function renderTrainings() {
+function render() {
+  for (let meal in dayData.foods) {
+    const box = document.querySelector(`#${meal} .foods`);
+    box.innerHTML = "";
+    dayData.foods[meal].forEach((f, i) => {
+      box.innerHTML += `
+        <div class="item">
+          ${f} (${foodsDB[f]} kcal)
+          <button onclick="removeFood('${meal}',${i})">❌</button>
+        </div>`;
+    });
+  }
+
   trainings.innerHTML = "";
   dayData.trainings.forEach((t, i) => {
     trainings.innerHTML += `
       <div class="item">
         ${t.name} (${t.kcal} kcal)
         <button onclick="removeTraining(${i})">❌</button>
-      </div>
-    `;
+      </div>`;
   });
-}
 
-function updateSummary() {
   let foodKcal = 0;
-  for (let meal in dayData.foods) {
-    dayData.foods[meal].forEach(f => foodKcal += foodsDB[f]);
-  }
-  let trainingKcal = dayData.trainings.reduce((s, t) => s + t.kcal, 0);
+  Object.values(dayData.foods).flat().forEach(f => foodKcal += foodsDB[f]);
+  let trainKcal = dayData.trainings.reduce((s,t)=>s+t.kcal,0);
   summary.innerHTML = `
     Ruoasta: ${foodKcal} kcal<br>
-    Treeneistä: ${trainingKcal} kcal<br><br>
-    <strong>Netto: ${foodKcal - trainingKcal} kcal</strong>
+    Treeneistä: ${trainKcal} kcal<br><br>
+    <strong>Netto: ${foodKcal - trainKcal} kcal</strong>
   `;
 }
 
+function saveDraft() {
+  localStorage.setItem("draft-" + date.value, JSON.stringify(dayData));
+}
+
 function saveDay() {
-  if (!date.value) return alert("Valitse päivä");
+  if (!date.value) return;
   localStorage.setItem(date.value, JSON.stringify(dayData));
-  alert("Tallennettu");
+  localStorage.removeItem("draft-" + date.value);
+  lockDay();
+}
+
+function lockDay() {
+  isLocked = true;
+  document.getElementById("content").classList.add("locked");
+  saveBtn.style.display = "none";
 }
 
 date.addEventListener("change", () => {
-  const saved = localStorage.getItem(date.value);
-  dayData = saved ? JSON.parse(saved) : {
-    foods: { aamupala: [], lounas: [], valipala1: [], illallinen: [], iltapala: [] },
-    trainings: []
-  };
-  renderFoods();
-  renderTrainings();
-  updateSummary();
+  const final = localStorage.getItem(date.value);
+  const draft = localStorage.getItem("draft-" + date.value);
+
+  if (final) {
+    dayData = JSON.parse(final);
+    lockDay();
+  } else {
+    isLocked = false;
+    document.getElementById("content").classList.remove("locked");
+    saveBtn.style.display = "block";
+    dayData = draft ? JSON.parse(draft) : emptyDay();
+  }
+  render();
 });
 </script>
 
