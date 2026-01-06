@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ruokaseuranta</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: auto;
+      padding: 1rem;
+    }
+    input, select, button {
+      width: 100%;
+      margin: 0.3rem 0;
+      padding: 0.5rem;
+    }
+    .box {
+      border: 1px solid #ccc;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Ruokaseuranta</h2>
+
+<label>Päivä</label>
+<input type="date" id="date">
+
+<div class="box">
+  <h3>Lisää ruoka</h3>
+
+  <select id="food">
+    <option value="kanafilee">Kanafilee (165 kcal / 100g)</option>
+    <option value="riisi">Riisi (130 kcal / 100g)</option>
+    <option value="kaurapuuro">Kaurapuuro (68 kcal / 100g)</option>
+    <option value="banaani">Banaani (89 kcal / 100g)</option>
+  </select>
+
+  <input type="number" id="amount" placeholder="Määrä grammoina">
+
+  <button onclick="addFood()">Lisää ruoka</button>
+</div>
+
+<div class="box">
+  <h3>Treeni</h3>
+  <input type="number" id="training" placeholder="Kulutus kcal">
+</div>
+
+<button onclick="saveDay()">Tallenna päivä</button>
+
+<div class="box">
+  <h3>Yhteenveto</h3>
+  <div id="summary"></div>
+</div>
+
+<script>
+const foods = {
+  kanafilee: 165,
+  riisi: 130,
+  kaurapuuro: 68,
+  banaani: 89
+};
+
+let dayFoods = [];
+
+function addFood() {
+  const food = document.getElementById("food").value;
+  const amount = Number(document.getElementById("amount").value);
+
+  if (!amount) return alert("Syötä määrä");
+
+  dayFoods.push({ food, amount });
+  document.getElementById("amount").value = "";
+  updateSummary();
+}
+
+function saveDay() {
+  const date = document.getElementById("date").value;
+  const training = Number(document.getElementById("training").value);
+
+  if (!date) return alert("Valitse päivä");
+
+  const data = {
+    foods: dayFoods,
+    training
+  };
+
+  localStorage.setItem(date, JSON.stringify(data));
+  alert("Päivä tallennettu");
+}
+
+function updateSummary() {
+  let totalFoodKcal = 0;
+
+  dayFoods.forEach(item => {
+    totalFoodKcal += foods[item.food] * item.amount / 100;
+  });
+
+  const training = Number(document.getElementById("training").value) || 0;
+  const net = totalFoodKcal - training;
+
+  document.getElementById("summary").innerHTML = `
+    Ruoasta: ${Math.round(totalFoodKcal)} kcal<br>
+    Treeni: ${training} kcal<br><br>
+    <strong>Netto: ${Math.round(net)} kcal</strong>
+  `;
+}
+
+// Lataa päivän data jos olemassa
+document.getElementById("date").addEventListener("change", () => {
+  const date = document.getElementById("date").value;
+  const saved = localStorage.getItem(date);
+
+  dayFoods = [];
+
+  if (saved) {
+    const data = JSON.parse(saved);
+    dayFoods = data.foods;
+    document.getElementById("training").value = data.training;
+  } else {
+    document.getElementById("training").value = "";
+  }
+
+  updateSummary();
+});
+</script>
+
+</body>
+</html>
