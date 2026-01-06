@@ -1,27 +1,35 @@
 <!DOCTYPE html>
 <html lang="fi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ruokaseuranta</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: auto;
-      padding: 1rem;
-    }
-    input, select, button {
-      width: 100%;
-      margin: 0.3rem 0;
-      padding: 0.5rem;
-    }
-    .box {
-      border: 1px solid #ccc;
-      padding: 1rem;
-      margin-top: 1rem;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ruokaseuranta</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  max-width: 700px;
+  margin: auto;
+  padding: 1rem;
+}
+select, input, button {
+  width: 100%;
+  margin: 0.3rem 0;
+  padding: 0.4rem;
+}
+.section {
+  border: 1px solid #ccc;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+.item {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.2rem 0;
+}
+.item button {
+  width: auto;
+}
+</style>
 </head>
 <body>
 
@@ -30,103 +38,187 @@
 <label>Päivä</label>
 <input type="date" id="date">
 
-<div class="box">
-  <h3>Lisää ruoka</h3>
+<div class="section">
+<h3>Lisää ruoka</h3>
 
-  <select id="food">
-    <option value="kanafilee">Kanafilee (165 kcal / 100g)</option>
-    <option value="riisi">Riisi (130 kcal / 100g)</option>
-    <option value="kaurapuuro">Kaurapuuro (68 kcal / 100g)</option>
-    <option value="banaani">Banaani (89 kcal / 100g)</option>
-  </select>
+<select id="meal">
+  <option value="aamupala">Aamupala</option>
+  <option value="lounas">Lounas</option>
+  <option value="valipala1">Välipala</option>
+  <option value="valipala2">Välipala 2</option>
+  <option value="illallinen">Illallinen</option>
+  <option value="iltapala">Iltapala</option>
+</select>
 
-  <input type="number" id="amount" placeholder="Määrä grammoina">
+<select id="food">
+  <option value="kaurapuuro">Kaurapuuro (250 kcal)</option>
+  <option value="kanapasta">Kanapasta (600 kcal)</option>
+  <option value="rahka">Rahka (200 kcal)</option>
+  <option value="leipa">Leipä + levite (220 kcal)</option>
+  <option value="salaatti">Salaatti + proteiini (350 kcal)</option>
+  <option value="smoothie">Smoothie (300 kcal)</option>
+</select>
 
-  <button onclick="addFood()">Lisää ruoka</button>
+<button onclick="addFood()">Lisää ruoka</button>
 </div>
 
-<div class="box">
-  <h3>Treeni</h3>
-  <input type="number" id="training" placeholder="Kulutus kcal">
+<div class="section">
+<h3>Ruoat</h3>
+<div id="foodsList"></div>
+</div>
+
+<div class="section">
+<h3>Lisää treeni</h3>
+<input type="text" id="trainingName" placeholder="Treenin nimi">
+<input type="number" id="trainingKcal" placeholder="Kulutus kcal">
+<button onclick="addTraining()">Lisää treeni</button>
+</div>
+
+<div class="section">
+<h3>Treenit</h3>
+<div id="trainingsList"></div>
 </div>
 
 <button onclick="saveDay()">Tallenna päivä</button>
 
-<div class="box">
-  <h3>Yhteenveto</h3>
-  <div id="summary"></div>
+<div class="section">
+<h3>Yhteenveto</h3>
+<div id="summary"></div>
 </div>
 
 <script>
-const foods = {
-  kanafilee: 165,
-  riisi: 130,
-  kaurapuuro: 68,
-  banaani: 89
+const foodsDB = {
+  kaurapuuro: 250,
+  kanapasta: 600,
+  rahka: 200,
+  leipa: 220,
+  salaatti: 350,
+  smoothie: 300
 };
 
-let dayFoods = [];
+let dayData = {
+  foods: {
+    aamupala: [],
+    lounas: [],
+    valipala1: [],
+    valipala2: [],
+    illallinen: [],
+    iltapala: []
+  },
+  trainings: []
+};
 
 function addFood() {
-  const food = document.getElementById("food").value;
-  const amount = Number(document.getElementById("amount").value);
-
-  if (!amount) return alert("Syötä määrä");
-
-  dayFoods.push({ food, amount });
-  document.getElementById("amount").value = "";
+  const meal = mealSelect.value;
+  const food = foodSelect.value;
+  dayData.foods[meal].push(food);
+  renderFoods();
   updateSummary();
 }
 
-function saveDay() {
-  const date = document.getElementById("date").value;
-  const training = Number(document.getElementById("training").value);
+function removeFood(meal, index) {
+  dayData.foods[meal].splice(index, 1);
+  renderFoods();
+  updateSummary();
+}
 
-  if (!date) return alert("Valitse päivä");
+function addTraining() {
+  const name = trainingName.value;
+  const kcal = Number(trainingKcal.value);
+  if (!name || !kcal) return alert("Täytä treenin tiedot");
 
-  const data = {
-    foods: dayFoods,
-    training
-  };
+  dayData.trainings.push({ name, kcal });
+  trainingName.value = "";
+  trainingKcal.value = "";
+  renderTrainings();
+  updateSummary();
+}
 
-  localStorage.setItem(date, JSON.stringify(data));
-  alert("Päivä tallennettu");
+function removeTraining(index) {
+  dayData.trainings.splice(index, 1);
+  renderTrainings();
+  updateSummary();
+}
+
+function renderFoods() {
+  foodsList.innerHTML = "";
+  for (let meal in dayData.foods) {
+    if (dayData.foods[meal].length === 0) continue;
+    foodsList.innerHTML += `<strong>${meal}</strong>`;
+    dayData.foods[meal].forEach((f, i) => {
+      foodsList.innerHTML += `
+        <div class="item">
+          ${f} (${foodsDB[f]} kcal)
+          <button onclick="removeFood('${meal}', ${i})">❌</button>
+        </div>`;
+    });
+  }
+}
+
+function renderTrainings() {
+  trainingsList.innerHTML = "";
+  dayData.trainings.forEach((t, i) => {
+    trainingsList.innerHTML += `
+      <div class="item">
+        ${t.name} (${t.kcal} kcal)
+        <button onclick="removeTraining(${i})">❌</button>
+      </div>`;
+  });
 }
 
 function updateSummary() {
-  let totalFoodKcal = 0;
+  let foodKcal = 0;
+  for (let meal in dayData.foods) {
+    dayData.foods[meal].forEach(f => foodKcal += foodsDB[f]);
+  }
 
-  dayFoods.forEach(item => {
-    totalFoodKcal += foods[item.food] * item.amount / 100;
-  });
+  let trainingKcal = dayData.trainings.reduce((sum, t) => sum + t.kcal, 0);
+  let net = foodKcal - trainingKcal;
 
-  const training = Number(document.getElementById("training").value) || 0;
-  const net = totalFoodKcal - training;
-
-  document.getElementById("summary").innerHTML = `
-    Ruoasta: ${Math.round(totalFoodKcal)} kcal<br>
-    Treeni: ${training} kcal<br><br>
-    <strong>Netto: ${Math.round(net)} kcal</strong>
+  summary.innerHTML = `
+    Ruoasta: ${foodKcal} kcal<br>
+    Treeneistä: ${trainingKcal} kcal<br><br>
+    <strong>Netto: ${net} kcal</strong>
   `;
 }
 
-// Lataa päivän data jos olemassa
-document.getElementById("date").addEventListener("change", () => {
-  const date = document.getElementById("date").value;
-  const saved = localStorage.getItem(date);
+function saveDay() {
+  const date = dateInput.value;
+  if (!date) return alert("Valitse päivä");
+  localStorage.setItem(date, JSON.stringify(dayData));
+  alert("Tallennettu");
+}
 
-  dayFoods = [];
-
+dateInput.addEventListener("change", () => {
+  const saved = localStorage.getItem(dateInput.value);
   if (saved) {
-    const data = JSON.parse(saved);
-    dayFoods = data.foods;
-    document.getElementById("training").value = data.training;
+    dayData = JSON.parse(saved);
   } else {
-    document.getElementById("training").value = "";
+    dayData = {
+      foods: {
+        aamupala: [],
+        lounas: [],
+        valipala1: [],
+        valipala2: [],
+        illallinen: [],
+        iltapala: []
+      },
+      trainings: []
+    };
   }
-
+  renderFoods();
+  renderTrainings();
   updateSummary();
 });
+
+const mealSelect = document.getElementById("meal");
+const foodSelect = document.getElementById("food");
+const foodsList = document.getElementById("foodsList");
+const trainingsList = document.getElementById("trainingsList");
+const trainingName = document.getElementById("trainingName");
+const trainingKcal = document.getElementById("trainingKcal");
+const summary = document.getElementById("summary");
+const dateInput = document.getElementById("date");
 </script>
 
 </body>
