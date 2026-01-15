@@ -27,7 +27,7 @@ select, input, button { padding: 0.4rem; }
 <body>
 
 <h2>Ruokaseuranta</h2>
-<h4>versio 1.4.2</h4>
+<h4>versio 1.4.3</h4>
 
 <div id="topButtons">
   <button onclick="downloadCSV()">CSV</button>
@@ -131,12 +131,66 @@ const foodsDB = {
 };
 
 
-const mealFoods={
-  aamupala:["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa"],
-  valipalat:["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa"],
-  iltapala:["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa"],
-  lounas:["gluteeniton_pasta","kanakastike_kevyt","kanakastike_semi","kanakastike_tuhti","kanaperuna","lasagne","peruna","perunamuussi","tonnikalapihvit","täysjyväpasta","täysjyväriisi"],
-  illallinen:["gluteeniton_pasta","kanakastike_kevyt","kanakastike_semi","kanakastike_tuhti","kanaperuna","lasagne","peruna","perunamuussi","tonnikalapihvit","täysjyväpasta","täysjyväriisi"]
+const mealFoods = {
+  aamupala: [
+    "appelsiini",
+    "kauraleipa",
+    "kaurapuuro_banaani",
+    "kaurapuuro_piltti",
+    "mehukeitto",
+    "ruisleipa",
+    "kananmuna paistettu",
+    "mysli",
+    "kauragurtti"
+  ],
+  valipalat: [
+    "appelsiini",
+    "kauraleipa",
+    "kaurapuuro_banaani",
+    "kaurapuuro_piltti",
+    "mehukeitto",
+    "ruisleipa",
+    "kananmuna paistettu",
+    "mysli",
+    "kauragurtti"
+  ],
+  iltapala: [
+    "appelsiini",
+    "kauraleipa",
+    "kaurapuuro_banaani",
+    "kaurapuuro_piltti",
+    "mehukeitto",
+    "ruisleipa",
+    "kananmuna paistettu",
+    "mysli",
+    "kauragurtti"
+  ],
+  lounas: [
+    "gluteeniton_pasta",
+    "kanakastike_kevyt",
+    "kanakastike_semi",
+    "kanakastike_tuhti",
+    "kanaperuna",
+    "lasagne",
+    "peruna",
+    "perunamuussi",
+    "tonnikalapihvit",
+    "täysjyväpasta",
+    "täysjyväriisi"
+  ],
+  illallinen: [
+    "gluteeniton_pasta",
+    "kanakastike_kevyt",
+    "kanakastike_semi",
+    "kanakastike_tuhti",
+    "kanaperuna",
+    "lasagne",
+    "peruna",
+    "perunamuussi",
+    "tonnikalapihvit",
+    "täysjyväpasta",
+    "täysjyväriisi"
+  ]
 };
 
 let dayData,isLocked=false;
