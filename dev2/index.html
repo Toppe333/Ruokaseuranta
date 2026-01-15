@@ -27,7 +27,7 @@ select, input, button { padding: 0.4rem; }
 <body>
 
 <h2>Ruokaseuranta</h2>
-<h4>versio 1.4.4</h4>
+<h4>versio 1.4.5</h4>
 
 <div id="topButtons">
   <button onclick="downloadCSV()">CSV</button>
@@ -287,8 +287,9 @@ function render(){
   Ruoasta: ${kcal} kcal, ${carbs} hh, ${fat} r<br>
   Perusaineenvaihdunta: ${BMR} kcal<br>
   Treeneistä: ${trainKcal} kcal<br><br>
-  <strong>Netto: ${kcal-(BMR+trainKcal)} kcal, ${carbs} hh, ${fat} r</strong>
-  `;
+  <strong>Netto: ${Math.round(kcal-(BMR+trainKcal))} kcal, ${Math.round(carbs-CARB_TARGET)} hh, ${Math.round(fat-FAT_TARGET)} r</strong>
+`;
+
 
   renderFiveDaySummary();
 }
