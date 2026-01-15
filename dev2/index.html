@@ -12,188 +12,278 @@ body { font-family: Arial, sans-serif; max-width: 750px; margin: auto; padding: 
 select, input, button { padding: 0.4rem; }
 .meal-controls select { flex: 1; }
 .item { display: flex; justify-content: space-between; margin-top: 0.3rem; }
+.item button { width: auto; }
 .locked { opacity: 0.6; pointer-events: none; }
-
 .summary-boxes { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .summary-box { border: 1px solid #ccc; padding: 0.5rem; min-width: 90px; text-align: center; }
-
-.dev-banner {
-  background:#fff3cd;
-  border:1px solid #ffeeba;
-  padding:0.5rem;
-  margin-bottom:1rem;
-  font-weight:bold;
-}
+.summary-box.positive { background:#e6f4ea; color:#1e6b3a; }
+.summary-box.negative { background:#fbeaea; color:#8a1f1f; }
+.summary-box.zero { background:#eee; color:#333; }
+.summary-box.nodata { background:#f5f5f5; color:#777; font-style:italic; }
+#backupBtn, #unlockBtn { float:right; margin-bottom:1rem; }
 </style>
 </head>
-
 <body>
 
-<div class="dev-banner">⚠️ KEHITYSVERSIO – testaa vain DEV-datalla</div>
-
 <h2>Ruokaseuranta</h2>
-<h4>versio DEV 2.0</h4>
+<h4>versio 1.2</h4>
+<button id="backupBtn" onclick="downloadCSV()">Varmuuskopioi CSV</button>
 
 <label>Päivä</label>
 <input type="date" id="date">
 <br>
-<button id="unlockBtn" style="display:none" onclick="unlockDay()">Muokkaa tietoja</button>
+<button id="unlockBtn" style="display:none;" onclick="unlockDay()">Muokkaa tietoja</button>
 
 <div id="content">
-  <div id="meals"></div>
 
-  <div class="section">
-    <h3>Treenit</h3>
-    <div class="training-controls">
-      <input id="trainingName" placeholder="Treenin nimi">
-      <input id="trainingKcal" type="number" placeholder="kcal">
-      <button onclick="addTraining()">Lisää</button>
-    </div>
-    <div id="trainings"></div>
-  </div>
+<!-- AAMUPALA -->
+<div class="section" id="aamupala">
+<h3>Aamupala</h3>
+<div class="meal-controls">
+<select id="aamupalaSelect"></select>
+<input type="number" id="aamupalaGrams" placeholder="g">
+<button onclick="addFood('aamupala')">Lisää</button>
+</div>
+<div class="foods"></div>
+</div>
 
-  <button id="saveBtn" onclick="saveDay()">Tallenna päivä</button>
+<!-- LOUNAS -->
+<div class="section" id="lounas">
+<h3>Lounas</h3>
+<div class="meal-controls">
+<select id="lounasSelect"></select>
+<input type="number" id="lounasGrams" placeholder="g">
+<button onclick="addFood('lounas')">Lisää</button>
+</div>
+<div class="foods"></div>
+</div>
 
-  <div class="section">
-    <h3>Yhteenveto</h3>
-    <div id="summary"></div>
-    <div id="fiveDaySummary"></div>
-  </div>
+<!-- VÄLIPALAT -->
+<div class="section" id="valipalat">
+<h3>Välipalat</h3>
+<div class="meal-controls">
+<select id="valipalatSelect"></select>
+<input type="number" id="valipalatGrams" placeholder="g">
+<button onclick="addFood('valipalat')">Lisää</button>
+</div>
+<div class="foods"></div>
+</div>
+
+<!-- ILLALLINEN -->
+<div class="section" id="illallinen">
+<h3>Illallinen</h3>
+<div class="meal-controls">
+<select id="illallinenSelect"></select>
+<input type="number" id="illallinenGrams" placeholder="g">
+<button onclick="addFood('illallinen')">Lisää</button>
+</div>
+<div class="foods"></div>
+</div>
+
+<!-- ILTAPALA -->
+<div class="section" id="iltapala">
+<h3>Iltapala</h3>
+<div class="meal-controls">
+<select id="iltapalaSelect"></select>
+<input type="number" id="iltapalaGrams" placeholder="g">
+<button onclick="addFood('iltapala')">Lisää</button>
+</div>
+<div class="foods"></div>
+</div>
+
+<!-- TREENIT -->
+<div class="section">
+<h3>Treenit</h3>
+<div class="training-controls">
+<input id="trainingName" placeholder="Treenin nimi">
+<input id="trainingKcal" type="number" placeholder="kcal">
+<button onclick="addTraining()">Lisää</button>
+</div>
+<div id="trainings"></div>
+</div>
+
+<button id="saveBtn" onclick="saveDay()">Tallenna päivä</button>
+
+<div class="section">
+<h3>Yhteenveto</h3>
+<div id="summary"></div>
+<div id="fiveDaySummary"></div>
+</div>
+
 </div>
 
 <script>
-/* ================= DATA ================= */
 const BMR = 2000;
 
 const foodsDB = {
-  kaurapuuro_banaani: { kcal:450, carbs:40, fat:3, default:100 },
-  kauraleipa: { kcal:120, carbs:20, fat:2, default:100 },
-  ruisleipa: { kcal:96, carbs:18, fat:1.5, default:100 },
-  appelsiini: { kcal:75, carbs:9, fat:0.2, default:100 },
-  mehukeitto: { kcal:44, carbs:10, fat:0, default:400 }
+  appelsiini: { kcal:75, default:100 },
+  kauraleipa: { kcal:120, default:100 },
+  kaurapuuro_banaani: { kcal:450, default:100 },
+  kaurapuuro_piltti: { kcal:383, default:100 },
+  mehukeitto: { kcal:44, default:400 },
+  ruisleipa: { kcal:96, default:100 },
+
+  gluteeniton_pasta: { kcal:356, default:0 },
+  kanakastike_kevyt: { kcal:95, default:0 },
+  kanakastike_semi: { kcal:120, default:0 },
+  kanakastike_tuhti: { kcal:150, default:0 },
+  kanaperuna: { kcal:83, default:0 },
+  lasagne: { kcal:120, default:0 },
+  peruna: { kcal:75, default:0 },
+  perunamuussi: { kcal:120, default:0 },
+  tonnikalapihvit: { kcal:170, default:0 },
+  täysjyväpasta: { kcal:343, default:0 },
+  täysjyväriisi: { kcal:145, default:0 }
 };
 
 const mealFoods = {
-  aamupala:["appelsiini","kauraleipa","kaurapuuro_banaani","mehukeitto","ruisleipa"],
-  lounas:["kaurapuuro_banaani","ruisleipa"],
-  valipalat:["appelsiini","ruisleipa"],
-  illallinen:["kauraleipa","ruisleipa"],
-  iltapala:["mehukeitto","ruisleipa"]
+  aamupala: ["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa"],
+  valipalat: ["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa"],
+  iltapala: ["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa"],
+  lounas: ["gluteeniton_pasta","kanakastike_kevyt","kanakastike_semi","kanakastike_tuhti","kanaperuna","lasagne","peruna","perunamuussi","tonnikalapihvit","täysjyväpasta","täysjyväriisi"],
+  illallinen: ["gluteeniton_pasta","kanakastike_kevyt","kanakastike_semi","kanakastike_tuhti","kanaperuna","lasagne","peruna","perunamuussi","tonnikalapihvit","täysjyväpasta","täysjyväriisi"]
 };
 
-/* ================= STATE ================= */
 let dayData, isLocked=false;
 
-function emptyDay(){
-  return { foods:{aamupala:[],lounas:[],valipalat:[],illallinen:[],iltapala:[]}, trainings:[] };
-}
-
-/* ================= UI BUILD ================= */
-function buildMeals(){
-  meals.innerHTML="";
-  for(const meal in mealFoods){
-    meals.innerHTML+=`
-      <div class="section" id="${meal}">
-        <h3>${meal}</h3>
-        <div class="meal-controls">
-          <select id="${meal}Select"></select>
-          <input id="${meal}Grams" type="number" placeholder="g">
-          <button onclick="addFood('${meal}')">Lisää</button>
-        </div>
-        <div class="foods"></div>
-      </div>`;
-  }
-}
+function emptyDay(){ return { foods:{aamupala:[],lounas:[],valipalat:[],illallinen:[],iltapala:[]}, trainings:[] }; }
 
 function fillSelects(){
-  for(const meal in mealFoods){
+  for(let meal in mealFoods){
     const sel=document.getElementById(meal+"Select");
-    sel.innerHTML='<option value="">Valitse</option>';
-    mealFoods[meal].forEach(f=>{
-      sel.innerHTML+=`<option value="${f}">${f.replaceAll("_"," ")}</option>`;
-    });
-    sel.onchange=()=>{
-      document.getElementById(meal+"Grams").value =
-        sel.value ? foodsDB[sel.value].default : "";
-    };
+    sel.innerHTML='<option value="">Valitse ruoka</option>';
+    mealFoods[meal].sort().forEach(f=>{ sel.innerHTML+=`<option value="${f}">${f.replaceAll("_"," ")}</option>`; });
   }
 }
+fillSelects();
 
-/* ================= CORE ================= */
+function attachDefaultGrams() {
+  const meals = ["aamupala","lounas","valipalat","illallinen","iltapala"];
+  meals.forEach(meal=>{
+    const sel=document.getElementById(meal+"Select");
+    const gramsInput=document.getElementById(meal+"Grams");
+    sel.addEventListener("change",()=>{
+      if(sel.value){ gramsInput.value=foodsDB[sel.value].default; }
+      else{ gramsInput.value=""; }
+    });
+  });
+}
+attachDefaultGrams();
+
 function addFood(meal){
   if(isLocked) return;
   const sel=document.getElementById(meal+"Select");
-  const g=document.getElementById(meal+"Grams");
-  if(!sel.value || !g.value) return;
-  dayData.foods[meal].push({id:sel.value, grams:Number(g.value)});
-  sel.value=""; g.value="";
+  const gramsInput=document.getElementById(meal+"Grams");
+  if(!sel.value) return;
+  const grams=Number(gramsInput.value);
+  if(isNaN(grams) || grams <=0) return;
+  dayData.foods[meal].push({id:sel.value,grams});
+  gramsInput.value=""; sel.value="";
   saveDraft(); render();
 }
+function removeFood(meal,i){ if(isLocked) return; dayData.foods[meal].splice(i,1); saveDraft(); render(); }
 
-function removeFood(meal,i){
-  if(isLocked) return;
-  dayData.foods[meal].splice(i,1);
-  saveDraft(); render();
-}
-
-function addTraining(){
-  if(isLocked) return;
+function addTraining(){ 
+  if(isLocked) return; 
   if(!trainingName.value || !trainingKcal.value) return;
   dayData.trainings.push({name:trainingName.value,kcal:Number(trainingKcal.value)});
-  trainingName.value=""; trainingKcal.value="";
-  saveDraft(); render();
+  trainingName.value=""; trainingKcal.value=""; saveDraft(); render();
 }
+function removeTraining(i){ if(isLocked) return; dayData.trainings.splice(i,1); saveDraft(); render(); }
 
-function removeTraining(i){
-  if(isLocked) return;
-  dayData.trainings.splice(i,1);
-  saveDraft(); render();
-}
-
-/* ================= RENDER ================= */
+// ==================================
+// Renderöinti: ruoka ja treenit
+// ==================================
 function render(){
-  let kcal=0, carbs=0, fat=0;
-
-  for(const meal in dayData.foods){
+  let foodKcal=0;
+  for(let meal in dayData.foods){
     const box=document.querySelector(`#${meal} .foods`);
     box.innerHTML="";
     dayData.foods[meal].forEach((f,i)=>{
-      const db=foodsDB[f.id];
-      const k=f.grams*db.kcal/100;
-      kcal+=k;
-      carbs+=f.grams*db.carbs/100;
-      fat+=f.grams*db.fat/100;
-      box.innerHTML+=`
-        <div class="item">
-          ${f.id.replaceAll("_"," ")} ${f.grams} g
-          <button onclick="removeFood('${meal}',${i})">❌</button>
-        </div>`;
+      const kcal=Math.round(f.grams*foodsDB[f.id].kcal/100);
+      foodKcal+=kcal;
+      box.innerHTML+=`<div class="item">${f.id.replaceAll("_"," ")} ${f.grams} g (${kcal} kcal)
+        <button onclick="removeFood('${meal}',${i})">❌</button>
+      </div>`;
     });
   }
 
-  const trainKcal=dayData.trainings.reduce((s,t)=>s+t.kcal,0);
-  const net=Math.round(kcal-(BMR+trainKcal));
+  // Treenit samanlaisina elementteinä
+  const trainBox=document.getElementById("trainings");
+  trainBox.innerHTML="";
+  dayData.trainings.forEach((t,i)=>{
+    trainBox.innerHTML+=`<div class="item">${t.name} (${t.kcal} kcal)
+      <button onclick="removeTraining(${i})">❌</button>
+    </div>`;
+  });
+
+  let trainKcal=dayData.trainings.reduce((s,t)=>s+t.kcal,0);
+  let net=Math.round(foodKcal-(BMR+trainKcal));
 
   summary.innerHTML=`
-    <strong>Päivän ravinto:</strong><br>
-    Kalorit: ${Math.round(kcal)} kcal<br>
-    Hiilarit: ${Math.round(carbs)} g<br>
-    Rasva: ${Math.round(fat)} g<br><br>
-    Treenit: ${trainKcal} kcal<br>
+    Ruoasta: ${Math.round(foodKcal)} kcal<br>
+    Perusaineenvaihdunta: ${BMR} kcal<br>
+    Treeneistä: ${trainKcal} kcal<br><br>
     <strong>Netto: ${net} kcal</strong>
   `;
+
+  renderFiveDaySummary();
 }
 
-/* ================= STORAGE ================= */
+// ==================================
+// 5 päivän koonti
+// ==================================
+function renderFiveDaySummary(){
+  let html=`<h3>5 päivän koonti</h3><div class="summary-boxes">`, total=0;
+  for(let i=1;i<=5;i++){
+    const d=new Date(date.value); d.setDate(d.getDate()-i);
+    const key=d.toISOString().split("T")[0];
+    const stored=localStorage.getItem(key);
+    if(stored){
+      const data=JSON.parse(stored);
+      let fkc=0;
+      Object.values(data.foods).flat().forEach(f=>fkc+=f.grams*foodsDB[f.id].kcal/100);
+      let tk=data.trainings.reduce((s,t)=>s+t.kcal,0);
+      let n=Math.round(fkc-(BMR+tk)); total+=n;
+      let cls=n>0?"positive":n<0?"negative":"zero";
+      html+=`<div class="summary-box ${cls}"><h4>-${i}</h4>${n} kcal</div>`;
+    } else {
+      html+=`<div class="summary-box nodata"><h4>-${i}</h4>Ei dataa</div>`;
+    }
+  }
+  html+=`</div><br><strong>Yhteensä: ${total} kcal</strong>`;
+  fiveDaySummary.innerHTML=html;
+}
+
+// ==================================
+// CSV-painike
+// ==================================
+function downloadCSV() {
+  let csv="Päivämäärä,Kalorit ruoasta,Treenien kalorit,Perusaineenvaihdunta,Netto\n";
+  for(let i=0;i<localStorage.length;i++){
+    const key=localStorage.key(i);
+    if(!key.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
+    const data=JSON.parse(localStorage.getItem(key));
+    let foodKcal=0;
+    Object.values(data.foods).flat().forEach(f=>foodKcal+=f.grams*foodsDB[f.id].kcal/100);
+    let trainKcal=data.trainings.reduce((s,t)=>s+t.kcal,0);
+    let net=Math.round(foodKcal-(BMR+trainKcal));
+    csv+=`${key},${Math.round(foodKcal)},${trainKcal},${BMR},${net}\n`;
+  }
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const link=document.createElement("a");
+  link.setAttribute("href",URL.createObjectURL(blob));
+  link.setAttribute("download","ruokaseuranta_backup.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// ==================================
 function saveDraft(){ localStorage.setItem("draft-"+date.value,JSON.stringify(dayData)); }
 function saveDay(){ localStorage.setItem(date.value,JSON.stringify(dayData)); localStorage.removeItem("draft-"+date.value); lockDay(); }
+function lockDay(){ isLocked=true; content.classList.add("locked"); saveBtn.style.display="none"; unlockBtn.style.display="block"; }
 
-function lockDay(){
-  isLocked=true;
-  content.classList.add("locked");
-  saveBtn.style.display="none";
-  unlockBtn.style.display="block";
-}
 function unlockDay(){
   isLocked=false;
   content.classList.remove("locked");
@@ -201,15 +291,16 @@ function unlockDay(){
   unlockBtn.style.display="none";
 }
 
-/* ================= INIT ================= */
-buildMeals();
-fillSelects();
-
 date.addEventListener("change",()=>{
   const f=localStorage.getItem(date.value);
   const d=localStorage.getItem("draft-"+date.value);
-  if(f){ dayData=JSON.parse(f); lockDay(); }
-  else { isLocked=false; content.classList.remove("locked"); saveBtn.style.display="block"; unlockBtn.style.display="none"; dayData=d?JSON.parse(d):emptyDay(); }
+  if(f){
+    dayData=JSON.parse(f); 
+    lockDay(); // lukitsee ja näyttää unlock-painikkeen
+  } else { 
+    isLocked=false; content.classList.remove("locked"); saveBtn.style.display="block"; unlockBtn.style.display="none";
+    dayData=d?JSON.parse(d):emptyDay(); 
+  }
   render();
 });
 </script>
