@@ -27,7 +27,7 @@ select, input, button { padding: 0.4rem; }
 <body>
 
 <h2>Ruokaseuranta</h2>
-<h4>versio 1.3</h4>
+<h4>versio 1.3.1</h4>
 
 <div id="topButtons">
   <button onclick="downloadCSV()">CSV</button>
@@ -220,7 +220,7 @@ function render(){
   });
 
   summary.innerHTML=`
-  Ruoasta: ${kcal} kcal, ${carbs}hh, ${fat}r<br>
+  Ruoasta: ${kcal} kcal, ${carbs} hh, ${fat} r<br>
   Perusaineenvaihdunta: ${BMR} kcal<br>
   Treeneistä: ${trainKcal} kcal<br><br>
   <strong>Netto: ${kcal-(BMR+trainKcal)} kcal</strong>`;
@@ -239,19 +239,25 @@ function renderFiveDaySummary(){
       html+=`<div class="summary-box nodata"><h4>-${i}</h4>Ei dataa</div>`;
       continue;
     }
-    const data=JSON.parse(s);
-    let c=0,r=0;
-    Object.values(data.foods).flat().forEach(f=>{
-      const db=foodsDB[f.id];
-      c+=f.grams*db.carbs/100;
-      r+=f.grams*db.fat/100;
+    const data = JSON.parse(s);
+    let kcal = 0, c = 0, r = 0;
+
+    Object.values(data.foods).flat().forEach(f => {
+      const db = foodsDB[f.id];
+      kcal += f.grams * db.kcal / 100;
+      c    += f.grams * db.carbs / 100;
+      r    += f.grams * db.fat / 100;
     });
-    const diff=Math.round(r-FAT_TARGET);
+    
+    const kcalDiff = Math.round(kcal - BMR);
+    const carbDiff = Math.round(c - CARB_TARGET);
+    const fatDiff  = Math.round(r - FAT_TARGET);
     const cls=diff>0?"positive":diff<0?"negative":"zero";
     html+=`<div class="summary-box ${cls}">
       <h4>-${i}</h4>
-      HH ${Math.round(c-CARB_TARGET)}<br>
-      R ${Math.round(diff)}
+      ${kcalDiff} kcal<br>
+      ${carbDiff} hh<br>
+      ${fatDiff} r
     </div>`;
   }
   html+="</div>";
