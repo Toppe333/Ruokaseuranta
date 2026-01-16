@@ -27,7 +27,7 @@ select, input, button { padding: 0.4rem; }
 <body>
 
 <h2>Ruokaseuranta</h2>
-<h4>versio 2.0.3 Tuotanto</h4>
+<h4>versio 2.0.4 Tuotanto</h4>
 
 <div id="topButtons">
   <button onclick="downloadCSV()">CSV</button>
@@ -270,41 +270,57 @@ function removeTraining(i){
 /* ================= RENDER ================= */
 function render(){
   ensureDayData();
-  let kcal=0, carbs=0, fat=0;
+  let kcal = 0, carbs = 0, fat = 0;
+
   for(let meal in dayData.foods){
-    const box=document.querySelector(`#${meal} .foods`);
-    box.innerHTML="";
-    dayData.foods[meal].forEach((f,i)=>{
-      const db=foodsDB[f.id];
-      const k=Math.round(f.grams*db.kcal/100);
-      const c=Math.round(f.grams*db.carbs/100);
-      const r=Math.round(f.grams*db.fat/100);
-      kcal+=k; carbs+=c; fat+=r;
-      box.innerHTML+=`<div class="item">
-        ${f.id.replaceAll("_"," ")} ${f.grams} g (${k} kcal, ${c} hh, ${r} r)
+    const box = document.querySelector(`#${meal} .foods`);
+    box.innerHTML = "";
+
+    dayData.foods[meal].forEach((f, i) => {
+      const db = foodsDB[f.id];
+      const c = db.carbs ?? 0;
+      const r = db.fat   ?? 0;
+
+      const kVal = f.grams * db.kcal / 100;
+      const cVal = f.grams * c / 100;
+      const rVal = f.grams * r / 100;
+
+      kcal  += kVal;
+      carbs += cVal;
+      fat   += rVal;
+
+      box.innerHTML += `<div class="item">
+        ${f.id.replaceAll("_"," ")} ${f.grams} g
+        (${Math.round(kVal)} kcal, ${Math.round(cVal)} hh, ${Math.round(rVal)} r)
         <button onclick="removeFood('${meal}',${i})">❌</button>
       </div>`;
     });
   }
 
-  const trainBox=document.getElementById("trainings");
-  trainBox.innerHTML="";
-  let trainKcal=0;
-  dayData.trainings.forEach((t,i)=>{
-    trainKcal+=t.kcal;
-    trainBox.innerHTML+=`<div class="item">${t.name} (${t.kcal} kcal)
+  // Treenit
+  const trainBox = document.getElementById("trainings");
+  trainBox.innerHTML = "";
+  let trainKcal = 0;
+
+  dayData.trainings.forEach((t, i) => {
+    trainKcal += t.kcal;
+    trainBox.innerHTML += `<div class="item">
+      ${t.name} (${t.kcal} kcal)
       <button onclick="removeTraining(${i})">❌</button>
     </div>`;
   });
 
-  // Yhteenveto
-  summary.innerHTML=`
-  Ruoasta: ${kcal} kcal, ${carbs} hh, ${fat} r<br>
-  Perusaineenvaihdunta: ${BMR} kcal<br>
-  Treeneistä: ${trainKcal} kcal<br><br>
-  <strong>Netto: ${Math.round(kcal-(BMR+trainKcal))} kcal, ${Math.round(carbs-CARB_TARGET)} hh, ${Math.round(fat-FAT_TARGET)} r</strong>
-`;
-
+  // Yhteenveto (pyöristys VASTA TÄSSÄ)
+  summary.innerHTML = `
+    Ruoasta: ${Math.round(kcal)} kcal, ${Math.round(carbs)} hh, ${Math.round(fat)} r<br>
+    Perusaineenvaihdunta: ${BMR} kcal<br>
+    Treeneistä: ${trainKcal} kcal<br><br>
+    <strong>
+      Netto: ${Math.round(kcal - (BMR + trainKcal))} kcal,
+      ${Math.round(carbs - CARB_TARGET)} hh,
+      ${Math.round(fat - FAT_TARGET)} r
+    </strong>
+  `;
 
   renderFiveDaySummary();
 }
