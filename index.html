@@ -27,7 +27,7 @@ select, input, button { padding: 0.4rem; }
 <body>
 
 <h2>Ruokaseuranta</h2>
-<h4>versio 2.0.2</h4>
+<h4>versio 2.0.3 Tuotanto</h4>
 
 <div id="topButtons">
   <button onclick="downloadCSV()">CSV</button>
@@ -195,6 +195,10 @@ const mealFoods = {
 
 let dayData,isLocked=false;
 
+// Varmistetaan että dayData on aina olemassa
+dayData = emptyDay();
+
+
 function emptyDay(){
   return{foods:{aamupala:[],lounas:[],valipalat:[],illallinen:[],iltapala:[]},trainings:[]};
 }
@@ -224,8 +228,17 @@ function attachDefaultGrams(){
 }
 attachDefaultGrams();
 
+
+function ensureDayData(){
+  if(!dayData){
+    dayData = emptyDay();
+  }
+}
+  
+
 /* ================= LISÄYS / POISTO ================= */
 function addFood(meal){
+  ensureDayData();
   if(isLocked)return;
   const sel=document.getElementById(meal+"Select");
   const grams=document.getElementById(meal+"Grams");
@@ -241,6 +254,7 @@ function removeFood(meal,i){
 }
 
 function addTraining(){
+  ensureDayData();
   if(isLocked)return;
   if(!trainingName.value||!trainingKcal.value)return;
   dayData.trainings.push({name:trainingName.value,kcal:Number(trainingKcal.value)});
@@ -255,6 +269,7 @@ function removeTraining(i){
 
 /* ================= RENDER ================= */
 function render(){
+  ensureDayData();
   let kcal=0, carbs=0, fat=0;
   for(let meal in dayData.foods){
     const box=document.querySelector(`#${meal} .foods`);
@@ -297,49 +312,62 @@ function render(){
 
 /* ================= 5 PÄIVÄÄ ================= */
 function renderFiveDaySummary(){
-  let html=`<h3>5 päivän koonti</h3><div class="summary-boxes">`;
+  let html = `<h3>5 päivän koonti</h3><div class="summary-boxes">`;
   let totalKcal = 0, totalCarbs = 0, totalFat = 0;
 
-  for(let i=1;i<=5;i++){
+  for(let i = 1; i <= 5; i++){
     const d = new Date(date.value);
-    d.setDate(d.getDate()-i);
+    d.setDate(d.getDate() - i);
     const key = d.toISOString().split("T")[0];
     const s = localStorage.getItem(key);
 
     if(!s){
-      html+=`<div class="summary-box nodata"><h4>-${i}</h4>Ei dataa</div>`;
+      html += `<div class="summary-box nodata"><h4>-${i}</h4>Ei dataa</div>`;
       continue;
     }
 
     const data = JSON.parse(s);
     let kcal = 0, c = 0, r = 0;
 
+    // --- Ruoat ---
     Object.values(data.foods).flat().forEach(f => {
       const db = foodsDB[f.id];
+      const carbs = db.carbs ?? 0;
+      const fat   = db.fat   ?? 0;
+
       kcal += f.grams * db.kcal / 100;
-      c    += f.grams * db.carbs / 100;
-      r    += f.grams * db.fat / 100;
+      c    += f.grams * carbs / 100;
+      r    += f.grams * fat   / 100;
     });
 
-    totalKcal  += kcal - BMR;
+    // --- TREENIT (PUUTTUNUT KOHTA) ---
+    const trainKcal = data.trainings.reduce((sum, t) => sum + t.kcal, 0);
+
+    // --- NETOT ---
+    const netKcal = kcal - (BMR + trainKcal);
+
+    totalKcal  += netKcal;
     totalCarbs += c - CARB_TARGET;
     totalFat   += r - FAT_TARGET;
 
-    const cls = (kcal-BMR) > 0 ? "positive" : (kcal-BMR) < 0 ? "negative" : "zero";
+    const cls =
+      netKcal > 0 ? "positive" :
+      netKcal < 0 ? "negative" : "zero";
 
-    html+=`<div class="summary-box ${cls}">
+    html += `<div class="summary-box ${cls}">
       <h4>-${i}</h4>
-      ${Math.round(kcal-BMR)} kcal<br>
-      ${Math.round(c-CARB_TARGET)} hh<br>
-      ${Math.round(r-FAT_TARGET)} r
+      ${Math.round(netKcal)} kcal<br>
+      ${Math.round(c - CARB_TARGET)} hh<br>
+      ${Math.round(r - FAT_TARGET)} r
     </div>`;
   }
 
-  html+="</div>";
-  html+=`<br><strong>Yhteensä: ${Math.round(totalKcal)} kcal, ${Math.round(totalCarbs)} hh, ${Math.round(totalFat)} r</strong>`;
+  html += `</div>`;
+  html += `<br><strong>Yhteensä: ${Math.round(totalKcal)} kcal, ${Math.round(totalCarbs)} hh, ${Math.round(totalFat)} r</strong>`;
 
   fiveDaySummary.innerHTML = html;
 }
+
 
 
 
