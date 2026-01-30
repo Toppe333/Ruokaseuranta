@@ -27,7 +27,7 @@ select, input, button { padding: 0.4rem; }
 <body>
 
 <h2>Ruokaseuranta</h2>
-<h4>versio 2.0.5 Tuotanto</h4>
+<h4>versio 2.0.6 Tuotanto</h4>
 
 <div id="topButtons">
   <button onclick="downloadCSV()">CSV</button>
@@ -121,6 +121,7 @@ const foodsDB = {
   // ===== LÄMPIMÄT RUOAT =====
   cajun: { kcal: 66, carbs: 3.6, fat: 2.1, default: 0 },
   gluteeniton_pasta: { kcal: 356, carbs: 74, fat: 2.4, default: 0 },
+  jauhenlihakastike: { kcal: 63, carbs: 4, fat: 3, default: 0 },
   kanakastike_kevyt: { kcal: 95, carbs: 4, fat: 3, default: 0 },
   kanakastike_semi: { kcal: 120, carbs: 4, fat: 5, default: 0 },
   kanakastike_tuhti: { kcal: 150, carbs: 5, fat: 9, default: 0 },
@@ -185,6 +186,7 @@ const mealFoods = {
   lounas: [
     "cajun",
     "gluteeniton_pasta",
+    "jauhenlihakastike,
     "kanakastike_kevyt",
     "kanakastike_semi",
     "kanakastike_tuhti",
@@ -204,6 +206,7 @@ const mealFoods = {
   illallinen: [
     "cajun",
     "gluteeniton_pasta",
+    "jauhenlihakastike,
     "kanakastike_kevyt",
     "kanakastike_semi",
     "kanakastike_tuhti",
