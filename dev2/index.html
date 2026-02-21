@@ -12,86 +12,71 @@ body { font-family: Arial, sans-serif; max-width: 750px; margin: auto; padding: 
 select, input, button { padding: 0.4rem; }
 .meal-controls select { flex: 1; }
 .item { display: flex; justify-content: space-between; margin-top: 0.3rem; }
-.item button { width: auto; }
 .locked { opacity: 0.6; pointer-events: none; }
+
 .summary-boxes { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.summary-box { border: 1px solid #ccc; padding: 0.5rem; min-width: 90px; text-align: center; }
+.summary-box { border: 1px solid #ccc; padding: 0.5rem; min-width: 100px; text-align: center; }
 .summary-box.positive { background:#e6f4ea; color:#1e6b3a; }
 .summary-box.negative { background:#fbeaea; color:#8a1f1f; }
 .summary-box.zero { background:#eee; color:#333; }
 .summary-box.nodata { background:#f5f5f5; color:#777; font-style:italic; }
-#backupBtn, #unlockBtn { float:right; margin-bottom:1rem; }
+
+#topButtons { float:right; }
+#syncStatus { font-size: 0.72rem; color: #999; margin-left: 0.5rem; }
 </style>
 </head>
 <body>
 
 <h2>Ruokaseuranta</h2>
-<h4>versio 1.2</h4>
-<button id="backupBtn" onclick="downloadCSV()">Varmuuskopioi CSV</button>
+<h4>versio 2.0.6 tuotantoTESTI <span id="syncStatus"></span></h4>
+
+<div id="topButtons">
+  <button onclick="downloadCSV()">CSV</button>
+  <button onclick="exportJSON()">JSON</button>
+  <input type="file" id="jsonImport" accept=".json" onchange="importJSON(event)">
+</div>
 
 <label>Päivä</label>
-<input type="date" id="date">
-<br>
+<input type="date" id="date"><br>
 <button id="unlockBtn" style="display:none;" onclick="unlockDay()">Muokkaa tietoja</button>
 
 <div id="content">
 
-<!-- AAMUPALA -->
-<div class="section" id="aamupala">
-<h3>Aamupala</h3>
+<div class="section" id="aamupala"><h3>Aamupala</h3>
 <div class="meal-controls">
 <select id="aamupalaSelect"></select>
 <input type="number" id="aamupalaGrams" placeholder="g">
 <button onclick="addFood('aamupala')">Lisää</button>
-</div>
-<div class="foods"></div>
-</div>
+</div><div class="foods"></div></div>
 
-<!-- LOUNAS -->
-<div class="section" id="lounas">
-<h3>Lounas</h3>
+<div class="section" id="lounas"><h3>Lounas</h3>
 <div class="meal-controls">
 <select id="lounasSelect"></select>
 <input type="number" id="lounasGrams" placeholder="g">
 <button onclick="addFood('lounas')">Lisää</button>
-</div>
-<div class="foods"></div>
-</div>
+</div><div class="foods"></div></div>
 
-<!-- VÄLIPALAT -->
-<div class="section" id="valipalat">
-<h3>Välipalat</h3>
+<div class="section" id="valipalat"><h3>Välipalat</h3>
 <div class="meal-controls">
 <select id="valipalatSelect"></select>
 <input type="number" id="valipalatGrams" placeholder="g">
 <button onclick="addFood('valipalat')">Lisää</button>
-</div>
-<div class="foods"></div>
-</div>
+</div><div class="foods"></div></div>
 
-<!-- ILLALLINEN -->
-<div class="section" id="illallinen">
-<h3>Illallinen</h3>
+<div class="section" id="illallinen"><h3>Illallinen</h3>
 <div class="meal-controls">
 <select id="illallinenSelect"></select>
 <input type="number" id="illallinenGrams" placeholder="g">
 <button onclick="addFood('illallinen')">Lisää</button>
-</div>
-<div class="foods"></div>
-</div>
+</div><div class="foods"></div></div>
 
-<!-- ILTAPALA -->
-<div class="section" id="iltapala">
-<h3>Iltapala</h3>
+<div class="section" id="iltapala"><h3>Iltapala</h3>
 <div class="meal-controls">
 <select id="iltapalaSelect"></select>
 <input type="number" id="iltapalaGrams" placeholder="g">
 <button onclick="addFood('iltapala')">Lisää</button>
-</div>
-<div class="foods"></div>
-</div>
+</div><div class="foods"></div></div>
 
-<!-- TREENIT -->
 <div class="section">
 <h3>Treenit</h3>
 <div class="training-controls">
@@ -114,196 +99,379 @@ select, input, button { padding: 0.4rem; }
 
 <script>
 const BMR = 2000;
+const CARB_TARGET = 432;
+const FAT_TARGET = 72;
 
+/* ================= SUPABASE DUAL-WRITE ================= */
+const SUPABASE_URL = 'https://utpvflesczynuwnnembf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_szsKwGkJ9IYiVZX11HxfOQ_IpGPQxs2';
+
+// Paikallinen välimuisti: päivämäärä → supabase days.id
+const sbDayIdCache = {};
+
+function setSyncStatus(msg, isError) {
+  const el = document.getElementById('syncStatus');
+  el.textContent = msg;
+  el.style.color = isError ? '#c00' : '#999';
+}
+
+async function sbFetch(path, options = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      'apikey':        SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type':  'application/json',
+      'Prefer':        options.prefer || '',
+      ...(options.headers || {})
+    }
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  if (res.status === 204) return null;
+  return res.json();
+}
+const sbGet    = p     => sbFetch(p);
+const sbPost   = (p,b) => sbFetch(p, { method:'POST',   body:JSON.stringify(b), prefer:'return=representation' });
+const sbDelete = p     => sbFetch(p, { method:'DELETE' });
+
+// Hae tai luo päivä Supabasessa, palauta id
+async function sbEnsureDay(dateStr, bmr) {
+  if (sbDayIdCache[dateStr]) return sbDayIdCache[dateStr];
+  const existing = await sbGet(`days?date=eq.${dateStr}&select=id`);
+  if (existing.length > 0) {
+    sbDayIdCache[dateStr] = existing[0].id;
+    return existing[0].id;
+  }
+  const result = await sbPost('days', { date: dateStr, bmr });
+  sbDayIdCache[dateStr] = result[0].id;
+  return result[0].id;
+}
+
+// Kirjoita koko päivä Supabaseen (kutsutaan saveDay:ssa)
+// Strategia: poista vanhat kirjaukset, kirjoita uudet — yksinkertainen ja varma
+async function sbSyncDay(dateStr, data) {
+  setSyncStatus('↑ synk...', false);
+  try {
+    const dayId = await sbEnsureDay(dateStr, data.bmr || BMR);
+
+    // Hae ruoat tietokannasta name→id mappauksia varten
+    if (!sbFoodsMap) {
+      const foods = await sbGet('foods?select=id,name');
+      sbFoodsMap = {};
+      foods.forEach(f => { sbFoodsMap[f.name] = f.id; });
+    }
+
+    // Poista vanhat kirjaukset (yksinkertaisempi kuin diff)
+    await sbDelete(`food_entries?day_id=eq.${dayId}`);
+    await sbDelete(`training_entries?day_id=eq.${dayId}`);
+
+    // Lisää ruoat
+    const foodPromises = [];
+    for (const [meal, items] of Object.entries(data.foods)) {
+      for (const item of items) {
+        const foodId = sbFoodsMap[item.id];
+        if (!foodId) continue; // tuntematon ruoka, ohita
+        foodPromises.push(sbPost('food_entries', {
+          day_id:  dayId,
+          meal:    meal,
+          food_id: foodId,
+          grams:   item.grams,
+          source:  'browser'
+        }));
+      }
+    }
+
+    // Lisää treenit
+    const trainPromises = (data.trainings || []).map(t =>
+      sbPost('training_entries', { day_id: dayId, name: t.name, kcal: t.kcal })
+    );
+
+    await Promise.all([...foodPromises, ...trainPromises]);
+    setSyncStatus('✓ synk', false);
+  } catch(e) {
+    setSyncStatus('⚠ synk epäonnistui', true);
+    console.warn('Supabase sync failed:', e.message);
+    // EI heitä virhettä ylöspäin — localStorage toimii normaalisti
+  }
+}
+
+let sbFoodsMap = null; // name → uuid, ladataan laiskasti
+
+/* ================= RUOKATIETOKANTA ================= */
 const foodsDB = {
-  appelsiini: { kcal:75, default:100 },
-  kauraleipa: { kcal:120, default:100 },
-  kaurapuuro_banaani: { kcal:450, default:100 },
-  kaurapuuro_piltti: { kcal:383, default:100 },
-  mehukeitto: { kcal:44, default:400 },
-  ruisleipa: { kcal:96, default:100 },
-
-  gluteeniton_pasta: { kcal:356, default:0 },
-  kanakastike_kevyt: { kcal:95, default:0 },
-  kanakastike_semi: { kcal:120, default:0 },
-  kanakastike_tuhti: { kcal:150, default:0 },
-  kanaperuna: { kcal:83, default:0 },
-  lasagne: { kcal:120, default:0 },
-  peruna: { kcal:75, default:0 },
-  perunamuussi: { kcal:120, default:0 },
-  tonnikalapihvit: { kcal:170, default:0 },
-  täysjyväpasta: { kcal:343, default:0 },
-  täysjyväriisi: { kcal:145, default:0 }
+  appelsiini: { kcal: 75, carbs: 12, fat: 0, default: 100 },
+  kauraleipa: { kcal: 120, carbs: 12.4, fat: 5.6, default: 100 },
+  kaurapuuro_banaani: { kcal: 450, carbs: 58, fat: 5, default: 100 },
+  kaurapuuro_piltti: { kcal: 383, carbs: 40, fat: 4, default: 100 },
+  mehukeitto: { kcal: 44, carbs: 11, fat: 0, default: 400 },
+  ruisleipa: { kcal: 96, carbs: 8.7, fat: 4.6, default: 100 },
+  kananmuna_paistettu: { kcal: 107, carbs: 1, fat: 16, default: 100 },
+  mysli: { kcal: 340, carbs: 62, fat: 3.5, default: 0 },
+  kauragurtti: { kcal: 80, carbs: 15, fat: 1.4, default: 0 },
+  taatelit: { kcal: 349, carbs: 66, fat: 3.8, default: 0 },
+  ananas: { kcal: 59, carbs: 13, fat: 0, default: 0 },
+  cajun: { kcal: 66, carbs: 3.6, fat: 2.1, default: 0 },
+  gluteeniton_pasta: { kcal: 356, carbs: 74, fat: 2.4, default: 0 },
+  jauhenlihakastike: { kcal: 63, carbs: 4, fat: 3, default: 0 },
+  kanakastike_kevyt: { kcal: 95, carbs: 4, fat: 3, default: 0 },
+  kanakastike_semi: { kcal: 120, carbs: 4, fat: 5, default: 0 },
+  kanakastike_tuhti: { kcal: 150, carbs: 5, fat: 9, default: 0 },
+  kanaperuna: { kcal: 83, carbs: 7, fat: 4, default: 0 },
+  lasagne: { kcal: 132, carbs: 9.3, fat: 7.1, default: 0 },
+  makaronilaatikko_deluxe: { kcal: 132, carbs: 15.9, fat: 3.8, default: 0 },
+  peruna: { kcal: 75, carbs: 16, fat: 0.1, default: 0 },
+  perunamuussi: { kcal: 120, carbs: 20, fat: 3, default: 0 },
+  tacocastike: { kcal: 63, carbs: 4.3, fat: 4.8, default: 0 },
+  tonnikalapihvit: { kcal: 170, carbs: 4, fat: 12, default: 0 },
+  tuscana: { kcal: 80, carbs: 4.2, fat: 2.9, default: 0 },
+  täysjyväpasta: { kcal: 158, carbs: 39, fat: 0.9, default: 0 },
+  täysjyväriisi: { kcal: 122, carbs: 24, fat: 1, default: 0 },
+  wok: { kcal: 72, carbs: 7.7, fat: 3.1, default: 0 }
 };
 
 const mealFoods = {
-  aamupala: ["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa"],
-  valipalat: ["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa"],
-  iltapala: ["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa"],
-  lounas: ["gluteeniton_pasta","kanakastike_kevyt","kanakastike_semi","kanakastike_tuhti","kanaperuna","lasagne","peruna","perunamuussi","tonnikalapihvit","täysjyväpasta","täysjyväriisi"],
-  illallinen: ["gluteeniton_pasta","kanakastike_kevyt","kanakastike_semi","kanakastike_tuhti","kanaperuna","lasagne","peruna","perunamuussi","tonnikalapihvit","täysjyväpasta","täysjyväriisi"]
+  aamupala:  ["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa","kananmuna_paistettu","mysli","kauragurtti","taatelit","ananas"],
+  valipalat: ["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa","kananmuna_paistettu","mysli","kauragurtti","taatelit","ananas"],
+  iltapala:  ["appelsiini","kauraleipa","kaurapuuro_banaani","kaurapuuro_piltti","mehukeitto","ruisleipa","kananmuna_paistettu","mysli","kauragurtti","taatelit","ananas"],
+  lounas:    ["cajun","gluteeniton_pasta","jauhenlihakastike","kanakastike_kevyt","kanakastike_semi","kanakastike_tuhti","kanaperuna","lasagne","makaronilaatikko_deluxe","peruna","perunamuussi","tacocastike","tonnikalapihvit","tuscana","täysjyväpasta","täysjyväriisi","wok"],
+  illallinen:["cajun","gluteeniton_pasta","jauhenlihakastike","kanakastike_kevyt","kanakastike_semi","kanakastike_tuhti","kanaperuna","lasagne","makaronilaatikko_deluxe","peruna","perunamuussi","tacocastike","tonnikalapihvit","tuscana","täysjyväpasta","täysjyväriisi","wok"]
 };
 
-let dayData, isLocked=false;
+let dayData, isLocked = false;
+dayData = emptyDay();
 
-function emptyDay(){ return { foods:{aamupala:[],lounas:[],valipalat:[],illallinen:[],iltapala:[]}, trainings:[] }; }
+function emptyDay() {
+  return { foods:{ aamupala:[], lounas:[], valipalat:[], illallinen:[], iltapala:[] }, trainings:[] };
+}
 
-function fillSelects(){
-  for(let meal in mealFoods){
-    const sel=document.getElementById(meal+"Select");
-    sel.innerHTML='<option value="">Valitse ruoka</option>';
-    mealFoods[meal].sort().forEach(f=>{ sel.innerHTML+=`<option value="${f}">${f.replaceAll("_"," ")}</option>`; });
+/* ================= UI ================= */
+function fillSelects() {
+  for (let meal in mealFoods) {
+    const sel = document.getElementById(meal+"Select");
+    sel.innerHTML = '<option value="">Valitse ruoka</option>';
+    mealFoods[meal].sort().forEach(f => {
+      sel.innerHTML += `<option value="${f}">${f.replaceAll("_"," ")}</option>`;
+    });
   }
 }
 fillSelects();
 
 function attachDefaultGrams() {
-  const meals = ["aamupala","lounas","valipalat","illallinen","iltapala"];
-  meals.forEach(meal=>{
-    const sel=document.getElementById(meal+"Select");
-    const gramsInput=document.getElementById(meal+"Grams");
-    sel.addEventListener("change",()=>{
-      if(sel.value){ gramsInput.value=foodsDB[sel.value].default; }
-      else{ gramsInput.value=""; }
+  ["aamupala","lounas","valipalat","illallinen","iltapala"].forEach(meal => {
+    const sel   = document.getElementById(meal+"Select");
+    const grams = document.getElementById(meal+"Grams");
+    sel.addEventListener("change", () => {
+      grams.value = sel.value ? foodsDB[sel.value].default : "";
     });
   });
 }
 attachDefaultGrams();
 
-function addFood(meal){
-  if(isLocked) return;
-  const sel=document.getElementById(meal+"Select");
-  const gramsInput=document.getElementById(meal+"Grams");
-  if(!sel.value) return;
-  const grams=Number(gramsInput.value);
-  if(isNaN(grams) || grams <=0) return;
-  dayData.foods[meal].push({id:sel.value,grams});
-  gramsInput.value=""; sel.value="";
+function ensureDayData() {
+  if (!dayData) dayData = emptyDay();
+}
+
+/* ================= LISÄYS / POISTO ================= */
+function addFood(meal) {
+  ensureDayData();
+  if (isLocked) return;
+  const sel   = document.getElementById(meal+"Select");
+  const grams = document.getElementById(meal+"Grams");
+  if (!sel.value || !grams.value) return;
+  dayData.foods[meal].push({ id: sel.value, grams: Number(grams.value) });
+  sel.value = ""; grams.value = "";
   saveDraft(); render();
 }
-function removeFood(meal,i){ if(isLocked) return; dayData.foods[meal].splice(i,1); saveDraft(); render(); }
-
-function addTraining(){ 
-  if(isLocked) return; 
-  if(!trainingName.value || !trainingKcal.value) return;
-  dayData.trainings.push({name:trainingName.value,kcal:Number(trainingKcal.value)});
-  trainingName.value=""; trainingKcal.value=""; saveDraft(); render();
+function removeFood(meal, i) {
+  if (isLocked) return;
+  dayData.foods[meal].splice(i, 1);
+  saveDraft(); render();
 }
-function removeTraining(i){ if(isLocked) return; dayData.trainings.splice(i,1); saveDraft(); render(); }
 
-// ==================================
-// Renderöinti: ruoka ja treenit
-// ==================================
-function render(){
-  let foodKcal=0;
-  for(let meal in dayData.foods){
-    const box=document.querySelector(`#${meal} .foods`);
-    box.innerHTML="";
-    dayData.foods[meal].forEach((f,i)=>{
-      const kcal=Math.round(f.grams*foodsDB[f.id].kcal/100);
-      foodKcal+=kcal;
-      box.innerHTML+=`<div class="item">${f.id.replaceAll("_"," ")} ${f.grams} g (${kcal} kcal)
+function addTraining() {
+  ensureDayData();
+  if (isLocked) return;
+  if (!trainingName.value || !trainingKcal.value) return;
+  dayData.trainings.push({ name: trainingName.value, kcal: Number(trainingKcal.value) });
+  trainingName.value = ""; trainingKcal.value = "";
+  saveDraft(); render();
+}
+function removeTraining(i) {
+  if (isLocked) return;
+  dayData.trainings.splice(i, 1);
+  saveDraft(); render();
+}
+
+/* ================= RENDER ================= */
+function render() {
+  ensureDayData();
+  let kcal = 0, carbs = 0, fat = 0;
+
+  for (let meal in dayData.foods) {
+    const box = document.querySelector(`#${meal} .foods`);
+    box.innerHTML = "";
+    dayData.foods[meal].forEach((f, i) => {
+      const db   = foodsDB[f.id];
+      const kVal = f.grams * db.kcal  / 100;
+      const cVal = f.grams * (db.carbs ?? 0) / 100;
+      const rVal = f.grams * (db.fat   ?? 0) / 100;
+      kcal += kVal; carbs += cVal; fat += rVal;
+      box.innerHTML += `<div class="item">
+        ${f.id.replaceAll("_"," ")} ${f.grams} g
+        (${Math.round(kVal)} kcal, ${Math.round(cVal)} hh, ${Math.round(rVal)} r)
         <button onclick="removeFood('${meal}',${i})">❌</button>
       </div>`;
     });
   }
 
-  // Treenit samanlaisina elementteinä
-  const trainBox=document.getElementById("trainings");
-  trainBox.innerHTML="";
-  dayData.trainings.forEach((t,i)=>{
-    trainBox.innerHTML+=`<div class="item">${t.name} (${t.kcal} kcal)
+  const trainBox = document.getElementById("trainings");
+  trainBox.innerHTML = "";
+  let trainKcal = 0;
+  dayData.trainings.forEach((t, i) => {
+    trainKcal += t.kcal;
+    trainBox.innerHTML += `<div class="item">
+      ${t.name} (${t.kcal} kcal)
       <button onclick="removeTraining(${i})">❌</button>
     </div>`;
   });
 
-  let trainKcal=dayData.trainings.reduce((s,t)=>s+t.kcal,0);
-  let net=Math.round(foodKcal-(BMR+trainKcal));
-
-  summary.innerHTML=`
-    Ruoasta: ${Math.round(foodKcal)} kcal<br>
+  summary.innerHTML = `
+    Ruoasta: ${Math.round(kcal)} kcal, ${Math.round(carbs)} hh, ${Math.round(fat)} r<br>
     Perusaineenvaihdunta: ${BMR} kcal<br>
     Treeneistä: ${trainKcal} kcal<br><br>
-    <strong>Netto: ${net} kcal</strong>
+    <strong>
+      Netto: ${Math.round(kcal - (BMR + trainKcal))} kcal,
+      ${Math.round(carbs - CARB_TARGET)} hh,
+      ${Math.round(fat - FAT_TARGET)} r
+    </strong>
   `;
 
   renderFiveDaySummary();
 }
 
-// ==================================
-// 5 päivän koonti
-// ==================================
-function renderFiveDaySummary(){
-  let html=`<h3>5 päivän koonti</h3><div class="summary-boxes">`, total=0;
-  for(let i=1;i<=5;i++){
-    const d=new Date(date.value); d.setDate(d.getDate()-i);
-    const key=d.toISOString().split("T")[0];
-    const stored=localStorage.getItem(key);
-    if(stored){
-      const data=JSON.parse(stored);
-      let fkc=0;
-      Object.values(data.foods).flat().forEach(f=>fkc+=f.grams*foodsDB[f.id].kcal/100);
-      let tk=data.trainings.reduce((s,t)=>s+t.kcal,0);
-      let n=Math.round(fkc-(BMR+tk)); total+=n;
-      let cls=n>0?"positive":n<0?"negative":"zero";
-      html+=`<div class="summary-box ${cls}"><h4>-${i}</h4>${n} kcal</div>`;
-    } else {
-      html+=`<div class="summary-box nodata"><h4>-${i}</h4>Ei dataa</div>`;
-    }
+/* ================= 5 PÄIVÄÄ ================= */
+function renderFiveDaySummary() {
+  let html = `<h3>5 päivän koonti</h3><div class="summary-boxes">`;
+  let totalKcal = 0, totalCarbs = 0, totalFat = 0;
+
+  for (let i = 1; i <= 5; i++) {
+    const d = new Date(date.value);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().split("T")[0];
+    const s   = localStorage.getItem(key);
+
+    if (!s) { html += `<div class="summary-box nodata"><h4>-${i}</h4>Ei dataa</div>`; continue; }
+
+    const data  = JSON.parse(s);
+    let kcal=0, c=0, r=0;
+    Object.values(data.foods).flat().forEach(f => {
+      const db = foodsDB[f.id];
+      kcal += f.grams * db.kcal / 100;
+      c    += f.grams * (db.carbs ?? 0) / 100;
+      r    += f.grams * (db.fat   ?? 0) / 100;
+    });
+    const trainKcal = data.trainings.reduce((sum, t) => sum + t.kcal, 0);
+    const netKcal   = kcal - (BMR + trainKcal);
+    totalKcal  += netKcal;
+    totalCarbs += c - CARB_TARGET;
+    totalFat   += r - FAT_TARGET;
+
+    const cls = netKcal > 0 ? "positive" : netKcal < 0 ? "negative" : "zero";
+    html += `<div class="summary-box ${cls}">
+      <h4>-${i}</h4>
+      ${Math.round(netKcal)} kcal<br>
+      ${Math.round(c - CARB_TARGET)} hh<br>
+      ${Math.round(r - FAT_TARGET)} r
+    </div>`;
   }
-  html+=`</div><br><strong>Yhteensä: ${total} kcal</strong>`;
-  fiveDaySummary.innerHTML=html;
+
+  html += `</div><br><strong>Yhteensä: ${Math.round(totalKcal)} kcal, ${Math.round(totalCarbs)} hh, ${Math.round(totalFat)} r</strong>`;
+  fiveDaySummary.innerHTML = html;
 }
 
-// ==================================
-// CSV-painike
-// ==================================
-function downloadCSV() {
-  let csv="Päivämäärä,Kalorit ruoasta,Treenien kalorit,Perusaineenvaihdunta,Netto\n";
-  for(let i=0;i<localStorage.length;i++){
-    const key=localStorage.key(i);
-    if(!key.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
-    const data=JSON.parse(localStorage.getItem(key));
-    let foodKcal=0;
-    Object.values(data.foods).flat().forEach(f=>foodKcal+=f.grams*foodsDB[f.id].kcal/100);
-    let trainKcal=data.trainings.reduce((s,t)=>s+t.kcal,0);
-    let net=Math.round(foodKcal-(BMR+trainKcal));
-    csv+=`${key},${Math.round(foodKcal)},${trainKcal},${BMR},${net}\n`;
-  }
-  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
-  const link=document.createElement("a");
-  link.setAttribute("href",URL.createObjectURL(blob));
-  link.setAttribute("download","ruokaseuranta_backup.csv");
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+/* ================= TALLENNUS ================= */
+function saveDraft() {
+  localStorage.setItem("draft-"+date.value, JSON.stringify(dayData));
 }
 
-// ==================================
-function saveDraft(){ localStorage.setItem("draft-"+date.value,JSON.stringify(dayData)); }
-function saveDay(){ localStorage.setItem(date.value,JSON.stringify(dayData)); localStorage.removeItem("draft-"+date.value); lockDay(); }
-function lockDay(){ isLocked=true; content.classList.add("locked"); saveBtn.style.display="none"; unlockBtn.style.display="block"; }
+function saveDay() {
+  const dateStr = date.value;
+  localStorage.setItem(dateStr, JSON.stringify(dayData));
+  localStorage.removeItem("draft-"+dateStr);
+  lockDay();
+  // Dual-write: synkronoi Supabaseen taustalla, ei blokkaa
+  sbSyncDay(dateStr, dayData);
+}
 
-function unlockDay(){
-  isLocked=false;
+function lockDay() {
+  isLocked = true;
+  content.classList.add("locked");
+  saveBtn.style.display   = "none";
+  unlockBtn.style.display = "block";
+}
+function unlockDay() {
+  isLocked = false;
   content.classList.remove("locked");
-  saveBtn.style.display="block";
-  unlockBtn.style.display="none";
+  saveBtn.style.display   = "block";
+  unlockBtn.style.display = "none";
 }
 
-date.addEventListener("change",()=>{
-  const f=localStorage.getItem(date.value);
-  const d=localStorage.getItem("draft-"+date.value);
-  if(f){
-    dayData=JSON.parse(f); 
-    lockDay(); // lukitsee ja näyttää unlock-painikkeen
-  } else { 
-    isLocked=false; content.classList.remove("locked"); saveBtn.style.display="block"; unlockBtn.style.display="none";
-    dayData=d?JSON.parse(d):emptyDay(); 
-  }
+date.addEventListener("change", () => {
+  const f = localStorage.getItem(date.value);
+  const d = localStorage.getItem("draft-"+date.value);
+  if (f) { dayData = JSON.parse(f); lockDay(); }
+  else   { isLocked=false; content.classList.remove("locked"); saveBtn.style.display="block"; unlockBtn.style.display="none"; dayData = d ? JSON.parse(d) : emptyDay(); }
   render();
 });
-</script>
 
+/* ================= EXPORT / IMPORT ================= */
+function downloadCSV() {
+  let csv = "Päivämäärä,Kalorit ruoasta,Treenien kalorit,Perusaineenvaihdunta,Netto\n";
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key.match(/^\d{4}-\d{2}-\d{2}$/)) continue;
+    const data      = JSON.parse(localStorage.getItem(key));
+    let foodKcal    = 0;
+    Object.values(data.foods).flat().forEach(f => foodKcal += f.grams * foodsDB[f.id].kcal / 100);
+    const trainKcal = data.trainings.reduce((s,t) => s+t.kcal, 0);
+    const net       = Math.round(foodKcal - (BMR + trainKcal));
+    csv += `${key},${Math.round(foodKcal)},${trainKcal},${BMR},${net}\n`;
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));
+  a.download = "ruokaseuranta_backup.csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function exportJSON() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k.match(/^\d{4}-\d{2}-\d{2}$/)) data[k] = JSON.parse(localStorage.getItem(k));
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}));
+  a.download = "ruokaseuranta_backup.json";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function importJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = () => {
+    const data = JSON.parse(r.result);
+    Object.entries(data).forEach(([k,v]) => {
+      Object.values(v.foods).flat().forEach(f => {
+        foodsDB[f.id].carbs ??= 0;
+        foodsDB[f.id].fat   ??= 0;
+      });
+      localStorage.setItem(k, JSON.stringify(v));
+    });
+    alert("Varmuuskopio palautettu");
+  };
+  r.readAsText(file);
+}
+</script>
 </body>
 </html>
