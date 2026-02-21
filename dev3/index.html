@@ -2,101 +2,634 @@
 <html lang="fi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Ruokaseuranta</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
 <style>
-body { font-family: Arial, sans-serif; max-width: 750px; margin: auto; padding: 1rem; }
-.section { border: 1px solid #ccc; padding: 1rem; margin-top: 1rem; }
-.meal-controls, .training-controls { display: flex; gap: 0.5rem; }
-select, input, button { padding: 0.4rem; }
-.meal-controls select { flex: 1; }
-.item { display: flex; justify-content: space-between; margin-top: 0.3rem; }
-.locked { opacity: 0.6; pointer-events: none; }
-.summary-boxes { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.summary-box { border: 1px solid #ccc; padding: 0.5rem; min-width: 100px; text-align: center; }
-.summary-box.positive { background:#e6f4ea; color:#1e6b3a; }
-.summary-box.negative { background:#fbeaea; color:#8a1f1f; }
-.summary-box.zero { background:#eee; color:#333; }
-.summary-box.nodata { background:#f5f5f5; color:#777; font-style:italic; }
-#topButtons { float:right; }
-.status { font-size: 0.85rem; color: #666; margin-top: 0.3rem; min-height: 1.2em; }
-.status.error { color: #a00; }
-.status.ok { color: #1e6b3a; }
+:root {
+  --bg:       #0f0f0f;
+  --surface:  #1a1a1a;
+  --surface2: #222222;
+  --border:   #2e2e2e;
+  --text:     #e8e4dc;
+  --muted:    #666;
+  --accent:   #c8a96e;
+  --accent2:  #7eb89a;
+  --neg:      #c06060;
+  --pos:      #7eb89a;
+  --zero:     #888;
+  --r:        8px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'DM Mono', monospace;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 1.5rem 1rem 3rem;
+}
+
+/* ── HEADER ── */
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.header-title h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 2rem;
+  font-weight: 300;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.header-title p {
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── BUTTONS ── */
+button {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  border-radius: var(--r);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+button:hover { border-color: var(--accent); color: var(--accent); }
+button.primary {
+  background: var(--accent);
+  color: #0f0f0f;
+  border-color: var(--accent);
+  font-weight: 500;
+}
+button.primary:hover { background: #d4b87a; border-color: #d4b87a; color: #0f0f0f; }
+button.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+button.ghost:hover { color: var(--text); border-color: var(--border); }
+button.danger { border-color: transparent; background: transparent; color: var(--neg); padding: 0.3rem 0.5rem; }
+button.danger:hover { background: rgba(192,96,96,0.1); }
+button.quick { font-size: 0.7rem; padding: 0.3rem 0.6rem; }
+
+/* ── DATE ROW ── */
+.date-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+input[type="date"] {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.55rem 0.8rem;
+  border-radius: var(--r);
+  outline: none;
+  transition: border-color 0.15s;
+}
+input[type="date"]:focus { border-color: var(--accent); }
+
+/* ── STATUS ── */
+.status-bar {
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  min-height: 1.2em;
+  transition: color 0.2s;
+}
+.status-bar.ok    { color: var(--pos); }
+.status-bar.error { color: var(--neg); }
+
+/* ── DAY SUMMARY BANNER ── */
+.day-banner {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.banner-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 0.9rem 1rem;
+  text-align: center;
+}
+.banner-box .label {
+  font-size: 0.6rem;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+.banner-box .value {
+  font-family: 'Fraunces', serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1;
+}
+.banner-box .value.pos { color: var(--pos); }
+.banner-box .value.neg { color: var(--neg); }
+.banner-box .value.zero { color: var(--zero); }
+.banner-box .sub {
+  font-size: 0.62rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+/* ── PROGRESS BAR ── */
+.progress-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 0.8rem 1rem;
+  margin-bottom: 1.5rem;
+}
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+.progress-track {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease, background 0.3s;
+}
+
+/* ── MEAL SECTIONS ── */
+.meal-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.meal-section:focus-within { border-color: #3a3a3a; }
+
+.meal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  user-select: none;
+  gap: 0.5rem;
+}
+.meal-header:hover { background: var(--surface2); }
+.meal-name {
+  font-family: 'Fraunces', serif;
+  font-size: 1rem;
+  font-weight: 300;
+  color: var(--accent);
+  font-style: italic;
+  flex: 1;
+}
+.meal-kcal {
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+.meal-chevron {
+  font-size: 0.7rem;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+.meal-section.open .meal-chevron { transform: rotate(180deg); }
+
+.meal-body {
+  display: none;
+  padding: 0 1rem 1rem;
+  border-top: 1px solid var(--border);
+}
+.meal-section.open .meal-body { display: block; }
+
+/* ── FOOD ITEMS ── */
+.food-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  gap: 0.5rem;
+  animation: fadeIn 0.2s ease;
+}
+.food-item:last-child { border-bottom: none; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.food-item-name { font-size: 0.8rem; flex: 1; color: var(--text); }
+.food-item-meta { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+
+/* ── ADD FOOD CONTROLS ── */
+.add-controls {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.add-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+select, input[type="number"] {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--r);
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+}
+select:focus, input[type="number"]:focus { border-color: var(--accent); }
+select { flex: 1; cursor: pointer; }
+input[type="number"] { width: 80px; text-align: center; }
+
+/* ── QUICK PICKS ── */
+.quick-picks {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+}
+
+/* ── SLIDER ── */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.1rem;
+}
+input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+.slider-label { font-size: 0.68rem; color: var(--muted); white-space: nowrap; }
+
+/* ── TRAINING SECTION ── */
+.training-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+.training-row input {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--r);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.training-row input:focus { border-color: var(--accent); }
+.training-row input:first-child { flex: 1; min-width: 120px; }
+.training-row input[type="number"] { width: 90px; }
+
+/* ── 5 DAY SUMMARY ── */
+.five-day-section {
+  margin-top: 1.5rem;
+}
+.five-day-section h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 1rem;
+  font-weight: 300;
+  font-style: italic;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.02em;
+}
+.five-day-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.5rem;
+}
+.day-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 0.7rem 0.5rem;
+  text-align: center;
+}
+.day-card .day-label {
+  font-size: 0.6rem;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+.day-card .day-kcal {
+  font-family: 'Fraunces', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1;
+}
+.day-card .day-macros {
+  font-size: 0.58rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+  line-height: 1.5;
+}
+.day-card.pos { border-color: rgba(126,184,154,0.3); }
+.day-card.pos .day-kcal { color: var(--pos); }
+.day-card.neg { border-color: rgba(192,96,96,0.3); }
+.day-card.neg .day-kcal { color: var(--neg); }
+.day-card.zero .day-kcal { color: var(--zero); }
+.day-card.nodata .day-kcal { font-size: 0.7rem; color: var(--muted); font-family: 'DM Mono'; }
+
+.five-day-total {
+  margin-top: 0.75rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: right;
+  letter-spacing: 0.05em;
+}
+.five-day-total span { color: var(--text); }
+
+/* ── LOCKED OVERLAY ── */
+.content.locked .meal-body .add-controls,
+.content.locked .meal-body .quick-picks,
+.content.locked .meal-body .slider-row,
+.content.locked .training-row,
+.content.locked .food-item button { pointer-events: none; opacity: 0.4; }
+.content.locked .add-controls { display: none; }
+
+/* ── EDIT BAR (korvaa tallenna-nappi) ── */
+.edit-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  min-height: 2rem;
+}
+.edit-bar .edit-hint { font-size: 0.68rem; color: var(--muted); letter-spacing: 0.05em; flex: 1; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 500px) {
+  .day-banner { grid-template-columns: repeat(3,1fr); }
+  .five-day-grid { grid-template-columns: repeat(5,1fr); }
+  .add-row { flex-wrap: wrap; }
+  input[type="number"] { width: 70px; }
+  .banner-box .value { font-size: 1.2rem; }
+}
 </style>
 </head>
 <body>
 
-<h2>Ruokaseuranta</h2>
-<h4>versio 2.1 — Supabase</h4>
-
-<div id="topButtons">
-  <button onclick="downloadCSV()">CSV</button>
-  <button onclick="exportJSON()">JSON</button>
-  <button onclick="document.getElementById('jsonImport').click()">Tuo JSON</button>
-  <input type="file" id="jsonImport" accept=".json" onchange="importJSON(event)" style="display:none">
+<div class="header">
+  <div class="header-title">
+    <h1>Ruokaseuranta</h1>
+    <p>v2.2 — Supabase</p>
+  </div>
+  <div class="header-actions">
+    <button onclick="downloadCSV()" class="ghost">CSV</button>
+    <button onclick="exportJSON()" class="ghost">JSON</button>
+    <button onclick="document.getElementById('jsonImport').click()" class="ghost">Tuo JSON</button>
+    <input type="file" id="jsonImport" accept=".json" onchange="importJSON(event)" style="display:none">
+  </div>
 </div>
 
-<label>Päivä</label>
-<input type="date" id="date">
-<div id="statusMsg" class="status"></div>
-<br>
-<button id="unlockBtn" style="display:none;" onclick="unlockDay()">Muokkaa tietoja</button>
-
-<div id="content">
-
-<div class="section" id="aamupala"><h3>Aamupala</h3>
-<div class="meal-controls">
-<select id="aamupalaSelect"></select>
-<input type="number" id="aamupalaGrams" placeholder="g">
-<button onclick="addFood('aamupala')">Lisää</button>
-</div><div class="foods"></div></div>
-
-<div class="section" id="lounas"><h3>Lounas</h3>
-<div class="meal-controls">
-<select id="lounasSelect"></select>
-<input type="number" id="lounasGrams" placeholder="g">
-<button onclick="addFood('lounas')">Lisää</button>
-</div><div class="foods"></div></div>
-
-<div class="section" id="valipalat"><h3>Välipalat</h3>
-<div class="meal-controls">
-<select id="valipalatSelect"></select>
-<input type="number" id="valipalatGrams" placeholder="g">
-<button onclick="addFood('valipalat')">Lisää</button>
-</div><div class="foods"></div></div>
-
-<div class="section" id="illallinen"><h3>Illallinen</h3>
-<div class="meal-controls">
-<select id="illallinenSelect"></select>
-<input type="number" id="illallinenGrams" placeholder="g">
-<button onclick="addFood('illallinen')">Lisää</button>
-</div><div class="foods"></div></div>
-
-<div class="section" id="iltapala"><h3>Iltapala</h3>
-<div class="meal-controls">
-<select id="iltapalaSelect"></select>
-<input type="number" id="iltapalaGrams" placeholder="g">
-<button onclick="addFood('iltapala')">Lisää</button>
-</div><div class="foods"></div></div>
-
-<div class="section">
-<h3>Treenit</h3>
-<div class="training-controls">
-<input id="trainingName" placeholder="Treenin nimi">
-<input id="trainingKcal" type="number" placeholder="kcal">
-<button onclick="addTraining()">Lisää</button>
-</div>
-<div id="trainings"></div>
+<div class="date-row">
+  <input type="date" id="date">
+  <div id="statusMsg" class="status-bar"></div>
 </div>
 
-<button id="saveBtn" onclick="saveDay()">Tallenna päivä</button>
-
-<div class="section">
-<h3>Yhteenveto</h3>
-<div id="summary"></div>
-<div id="fiveDaySummary"></div>
+<!-- Päivän yhteenveto banner -->
+<div class="day-banner">
+  <div class="banner-box">
+    <div class="label">Kalorit netto</div>
+    <div class="value" id="bannerKcal">—</div>
+    <div class="sub" id="bannerKcalSub"></div>
+  </div>
+  <div class="banner-box">
+    <div class="label">Hiilihydr. netto</div>
+    <div class="value" id="bannerCarbs">—</div>
+    <div class="sub" id="bannerCarbsSub"></div>
+  </div>
+  <div class="banner-box">
+    <div class="label">Rasva netto</div>
+    <div class="value" id="bannerFat">—</div>
+    <div class="sub" id="bannerFatSub"></div>
+  </div>
 </div>
 
+<!-- Progress -->
+<div class="progress-wrap">
+  <div class="progress-label">
+    <span>Kalorit</span>
+    <span id="progressText">0 / 2000 kcal</span>
+  </div>
+  <div class="progress-track">
+    <div class="progress-fill" id="progressFill" style="width:0%;background:var(--accent)"></div>
+  </div>
+</div>
+
+<!-- Edit bar -->
+<div class="edit-bar" id="editBar" style="display:none">
+  <span class="edit-hint">Tallennettu automaattisesti</span>
+  <button onclick="unlockDay()" class="ghost">✏️ Muokkaa</button>
+</div>
+
+<div class="content" id="content">
+
+  <!-- ATERIAT -->
+  <div class="meal-section open" id="sec-aamupala">
+    <div class="meal-header" onclick="toggleMeal('aamupala')">
+      <span class="meal-name">Aamupala</span>
+      <span class="meal-kcal" id="kcal-aamupala">0 kcal</span>
+      <span class="meal-chevron">▼</span>
+    </div>
+    <div class="meal-body">
+      <div class="foods" id="foods-aamupala"></div>
+      <div class="add-controls">
+        <div class="add-row">
+          <select id="sel-aamupala" onchange="onFoodSelect('aamupala')"></select>
+          <input type="number" id="g-aamupala" placeholder="g" min="1" max="2000" oninput="syncSlider('aamupala')">
+          <button onclick="addFood('aamupala')" class="primary">+</button>
+        </div>
+        <div class="quick-picks" id="quick-aamupala"></div>
+        <div class="slider-row" id="slider-row-aamupala" style="display:none">
+          <span class="slider-label">1g</span>
+          <input type="range" id="slider-aamupala" min="1" max="500" oninput="syncInput('aamupala')">
+          <span class="slider-label">500g</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="meal-section" id="sec-lounas">
+    <div class="meal-header" onclick="toggleMeal('lounas')">
+      <span class="meal-name">Lounas</span>
+      <span class="meal-kcal" id="kcal-lounas">0 kcal</span>
+      <span class="meal-chevron">▼</span>
+    </div>
+    <div class="meal-body">
+      <div class="foods" id="foods-lounas"></div>
+      <div class="add-controls">
+        <div class="add-row">
+          <select id="sel-lounas" onchange="onFoodSelect('lounas')"></select>
+          <input type="number" id="g-lounas" placeholder="g" min="1" max="2000" oninput="syncSlider('lounas')">
+          <button onclick="addFood('lounas')" class="primary">+</button>
+        </div>
+        <div class="quick-picks" id="quick-lounas"></div>
+        <div class="slider-row" id="slider-row-lounas" style="display:none">
+          <span class="slider-label">1g</span>
+          <input type="range" id="slider-lounas" min="1" max="500" oninput="syncInput('lounas')">
+          <span class="slider-label">500g</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="meal-section" id="sec-valipalat">
+    <div class="meal-header" onclick="toggleMeal('valipalat')">
+      <span class="meal-name">Välipalat</span>
+      <span class="meal-kcal" id="kcal-valipalat">0 kcal</span>
+      <span class="meal-chevron">▼</span>
+    </div>
+    <div class="meal-body">
+      <div class="foods" id="foods-valipalat"></div>
+      <div class="add-controls">
+        <div class="add-row">
+          <select id="sel-valipalat" onchange="onFoodSelect('valipalat')"></select>
+          <input type="number" id="g-valipalat" placeholder="g" min="1" max="2000" oninput="syncSlider('valipalat')">
+          <button onclick="addFood('valipalat')" class="primary">+</button>
+        </div>
+        <div class="quick-picks" id="quick-valipalat"></div>
+        <div class="slider-row" id="slider-row-valipalat" style="display:none">
+          <span class="slider-label">1g</span>
+          <input type="range" id="slider-valipalat" min="1" max="500" oninput="syncInput('valipalat')">
+          <span class="slider-label">500g</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="meal-section" id="sec-illallinen">
+    <div class="meal-header" onclick="toggleMeal('illallinen')">
+      <span class="meal-name">Illallinen</span>
+      <span class="meal-kcal" id="kcal-illallinen">0 kcal</span>
+      <span class="meal-chevron">▼</span>
+    </div>
+    <div class="meal-body">
+      <div class="foods" id="foods-illallinen"></div>
+      <div class="add-controls">
+        <div class="add-row">
+          <select id="sel-illallinen" onchange="onFoodSelect('illallinen')"></select>
+          <input type="number" id="g-illallinen" placeholder="g" min="1" max="2000" oninput="syncSlider('illallinen')">
+          <button onclick="addFood('illallinen')" class="primary">+</button>
+        </div>
+        <div class="quick-picks" id="quick-illallinen"></div>
+        <div class="slider-row" id="slider-row-illallinen" style="display:none">
+          <span class="slider-label">1g</span>
+          <input type="range" id="slider-illallinen" min="1" max="500" oninput="syncInput('illallinen')">
+          <span class="slider-label">500g</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="meal-section" id="sec-iltapala">
+    <div class="meal-header" onclick="toggleMeal('iltapala')">
+      <span class="meal-name">Iltapala</span>
+      <span class="meal-kcal" id="kcal-iltapala">0 kcal</span>
+      <span class="meal-chevron">▼</span>
+    </div>
+    <div class="meal-body">
+      <div class="foods" id="foods-iltapala"></div>
+      <div class="add-controls">
+        <div class="add-row">
+          <select id="sel-iltapala" onchange="onFoodSelect('iltapala')"></select>
+          <input type="number" id="g-iltapala" placeholder="g" min="1" max="2000" oninput="syncSlider('iltapala')">
+          <button onclick="addFood('iltapala')" class="primary">+</button>
+        </div>
+        <div class="quick-picks" id="quick-iltapala"></div>
+        <div class="slider-row" id="slider-row-iltapala" style="display:none">
+          <span class="slider-label">1g</span>
+          <input type="range" id="slider-iltapala" min="1" max="500" oninput="syncInput('iltapala')">
+          <span class="slider-label">500g</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TREENIT -->
+  <div class="meal-section" id="sec-treenit">
+    <div class="meal-header" onclick="toggleMeal('treenit')">
+      <span class="meal-name">Treenit</span>
+      <span class="meal-kcal" id="kcal-treenit">0 kcal</span>
+      <span class="meal-chevron">▼</span>
+    </div>
+    <div class="meal-body">
+      <div class="foods" id="foods-treenit"></div>
+      <div class="add-controls">
+        <div class="training-row">
+          <input id="trainingName" placeholder="Treenin nimi">
+          <input id="trainingKcal" type="number" placeholder="kcal">
+          <button onclick="addTraining()" class="primary">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- 5 päivän koonti -->
+<div class="five-day-section">
+  <h2>Viimeinen 5 päivää</h2>
+  <div class="five-day-grid" id="fiveDayGrid"></div>
+  <div class="five-day-total" id="fiveDayTotal"></div>
 </div>
 
 <script>
@@ -109,9 +642,10 @@ const BMR          = 2000;
 const CARB_TARGET  = 432;
 const FAT_TARGET   = 72;
 const MEALS        = ['aamupala','lounas','valipalat','illallinen','iltapala'];
+const QUICK_GRAMS  = [50, 100, 150, 200, 300];
 
 // =============================================
-// Supabase API
+// Supabase
 // =============================================
 async function sbFetch(path, options = {}) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -124,14 +658,13 @@ async function sbFetch(path, options = {}) {
       ...(options.headers || {})
     }
   });
-  if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
   if (res.status === 204) return null;
   return res.json();
 }
-
-const sbGet    = path      => sbFetch(path);
-const sbPost   = (path, b) => sbFetch(path, { method:'POST',   body:JSON.stringify(b), prefer:'return=representation' });
-const sbDelete = path      => sbFetch(path, { method:'DELETE' });
+const sbGet    = p      => sbFetch(p);
+const sbPost   = (p,b)  => sbFetch(p, { method:'POST',   body:JSON.stringify(b), prefer:'return=representation' });
+const sbDelete = p      => sbFetch(p, { method:'DELETE' });
 
 // =============================================
 // Tila
@@ -141,48 +674,45 @@ let dayId           = null;
 let dayEntries      = { aamupala:[], lounas:[], valipalat:[], illallinen:[], iltapala:[] };
 let trainingEntries = [];
 let isLocked        = false;
+let fiveDayCache    = null;
+let fiveDayDate     = null;
 
 function setStatus(msg, type='') {
   const el = document.getElementById('statusMsg');
   el.textContent = msg;
-  el.className   = 'status' + (type ? ' '+type : '');
+  el.className = 'status-bar' + (type ? ' '+type : '');
+  if (type === 'ok') setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 2500);
 }
 
 // =============================================
-// Käynnistys
+// Init
 // =============================================
 async function init() {
-  setStatus('Ladataan ruokia...');
+  setStatus('Ladataan...');
   try {
     const foods = await sbGet('foods?select=*&order=label.asc');
     foods.forEach(f => {
       foodsDB[f.name] = {
-        id:            f.id,
-        label:         f.label,
-        kcal:          f.kcal_per_100g,
-        carbs:         f.carbs_per_100g,
-        fat:           f.fat_per_100g,
-        default_grams: f.default_grams,
-        meal_types:    f.meal_types
+        id: f.id, label: f.label,
+        kcal: f.kcal_per_100g, carbs: f.carbs_per_100g, fat: f.fat_per_100g,
+        default_grams: f.default_grams, meal_types: f.meal_types
       };
     });
     fillSelects();
-    attachDefaultGrams();
+    buildQuickPicks();
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('date').value = today;
     await loadDay(today);
-  } catch(e) {
-    setStatus('Virhe: ' + e.message, 'error');
-  }
+  } catch(e) { setStatus('Virhe: '+e.message, 'error'); }
 }
 
 // =============================================
-// Dropdownit
+// Dropdownit & pikavalinnat
 // =============================================
 function fillSelects() {
   MEALS.forEach(meal => {
-    const sel = document.getElementById(meal+'Select');
-    sel.innerHTML = '<option value="">Valitse ruoka</option>';
+    const sel = document.getElementById('sel-'+meal);
+    sel.innerHTML = '<option value="">— valitse ruoka —</option>';
     Object.entries(foodsDB)
       .filter(([,f]) => f.meal_types.includes(meal))
       .sort(([,a],[,b]) => a.label.localeCompare(b.label,'fi'))
@@ -192,22 +722,68 @@ function fillSelects() {
   });
 }
 
-function attachDefaultGrams() {
+function buildQuickPicks() {
   MEALS.forEach(meal => {
-    const sel = document.getElementById(meal+'Select');
-    const gin = document.getElementById(meal+'Grams');
-    sel.addEventListener('change', () => {
-      gin.value = sel.value ? foodsDB[sel.value].default_grams : '';
+    const wrap = document.getElementById('quick-'+meal);
+    wrap.innerHTML = '';
+    QUICK_GRAMS.forEach(g => {
+      const btn = document.createElement('button');
+      btn.className = 'quick ghost';
+      btn.textContent = g+'g';
+      btn.onclick = () => setGrams(meal, g);
+      wrap.appendChild(btn);
     });
   });
+}
+
+function setGrams(meal, g) {
+  const inp = document.getElementById('g-'+meal);
+  inp.value = g;
+  syncSlider(meal);
+}
+
+function onFoodSelect(meal) {
+  const sel = document.getElementById('sel-'+meal);
+  const inp = document.getElementById('g-'+meal);
+  const sliderRow = document.getElementById('slider-row-'+meal);
+  if (sel.value) {
+    const def = foodsDB[sel.value].default_grams;
+    inp.value = def || '';
+    syncSlider(meal);
+    sliderRow.style.display = 'flex';
+  } else {
+    sliderRow.style.display = 'none';
+    inp.value = '';
+  }
+}
+
+function syncSlider(meal) {
+  const inp = document.getElementById('g-'+meal);
+  const slider = document.getElementById('slider-'+meal);
+  const v = parseInt(inp.value) || 0;
+  slider.value = Math.min(v, 500);
+}
+
+function syncInput(meal) {
+  const slider = document.getElementById('slider-'+meal);
+  const inp = document.getElementById('g-'+meal);
+  inp.value = slider.value;
+}
+
+// =============================================
+// Kollapsit
+// =============================================
+function toggleMeal(meal) {
+  const sec = document.getElementById('sec-'+meal);
+  sec.classList.toggle('open');
 }
 
 // =============================================
 // Päivän lataus
 // =============================================
 async function loadDay(dateStr) {
-  dayId           = null;
-  dayEntries      = { aamupala:[], lounas:[], valipalat:[], illallinen:[], iltapala:[] };
+  dayId = null;
+  dayEntries = { aamupala:[], lounas:[], valipalat:[], illallinen:[], iltapala:[] };
   trainingEntries = [];
   setStatus('Ladataan...');
   try {
@@ -230,14 +806,18 @@ async function loadDay(dateStr) {
       unlockDay();
       setStatus('');
     }
-  } catch(e) {
-    setStatus('Latausvirhe: ' + e.message, 'error');
-  }
+  } catch(e) { setStatus('Virhe: '+e.message, 'error'); }
   render();
+  // 5 päivän koonti vain kun päivä vaihtuu
+  if (fiveDayDate !== dateStr) {
+    fiveDayDate  = dateStr;
+    fiveDayCache = null;
+    renderFiveDaySummary(dateStr);
+  }
 }
 
 // =============================================
-// Varmista päivä olemassa
+// EnsureDay
 // =============================================
 async function ensureDay() {
   if (dayId) return;
@@ -247,15 +827,15 @@ async function ensureDay() {
 }
 
 // =============================================
-// Ruoan lisäys / poisto
+// Ruoan lisäys
 // =============================================
 async function addFood(meal) {
   if (isLocked) return;
-  const sel = document.getElementById(meal+'Select');
-  const gin = document.getElementById(meal+'Grams');
+  const sel   = document.getElementById('sel-'+meal);
+  const ginp  = document.getElementById('g-'+meal);
   if (!sel.value) return;
-  const grams = Number(gin.value);
-  if (isNaN(grams) || grams <= 0) return;
+  const grams = parseInt(ginp.value);
+  if (!grams || grams <= 0) return;
   setStatus('Lisätään...');
   try {
     await ensureDay();
@@ -264,10 +844,11 @@ async function addFood(meal) {
       day_id:dayId, meal, food_id:food.id, grams, source:'browser'
     });
     dayEntries[meal].push({ entryId:result[0].id, name:sel.value, grams });
-    sel.value = ''; gin.value = '';
+    sel.value = ''; ginp.value = '';
+    document.getElementById('slider-row-'+meal).style.display = 'none';
     setStatus('');
     render();
-  } catch(e) { setStatus('Virhe: '+e.message,'error'); }
+  } catch(e) { setStatus('Virhe: '+e.message, 'error'); }
 }
 
 async function removeFood(meal, i) {
@@ -276,16 +857,16 @@ async function removeFood(meal, i) {
     await sbDelete(`food_entries?id=eq.${dayEntries[meal][i].entryId}`);
     dayEntries[meal].splice(i,1);
     render();
-  } catch(e) { setStatus('Poistovirhe: '+e.message,'error'); }
+  } catch(e) { setStatus('Poistovirhe: '+e.message, 'error'); }
 }
 
 // =============================================
-// Treenien lisäys / poisto
+// Treeni
 // =============================================
 async function addTraining() {
   if (isLocked) return;
-  const name = document.getElementById('trainingName').value;
-  const kcal = Number(document.getElementById('trainingKcal').value);
+  const name = document.getElementById('trainingName').value.trim();
+  const kcal = parseInt(document.getElementById('trainingKcal').value);
   if (!name || !kcal) return;
   try {
     await ensureDay();
@@ -294,7 +875,7 @@ async function addTraining() {
     document.getElementById('trainingName').value = '';
     document.getElementById('trainingKcal').value = '';
     render();
-  } catch(e) { setStatus('Virhe: '+e.message,'error'); }
+  } catch(e) { setStatus('Virhe: '+e.message, 'error'); }
 }
 
 async function removeTraining(i) {
@@ -303,125 +884,138 @@ async function removeTraining(i) {
     await sbDelete(`training_entries?id=eq.${trainingEntries[i].entryId}`);
     trainingEntries.splice(i,1);
     render();
-  } catch(e) { setStatus('Poistovirhe: '+e.message,'error'); }
+  } catch(e) { setStatus('Poistovirhe: '+e.message, 'error'); }
 }
 
 // =============================================
-// Tallenna / lukitus
+// Lukitus — automaattinen kun data olemassa
 // =============================================
-async function saveDay() {
-  const dateStr = document.getElementById('date').value;
-  if (!dateStr) return;
-  setStatus('Tallennetaan...');
-  try {
-    await ensureDay();
-    lockDay();
-    setStatus('Tallennettu ✓','ok');
-  } catch(e) { setStatus('Tallennusvirhe: '+e.message,'error'); }
-}
-
 function lockDay() {
   isLocked = true;
   document.getElementById('content').classList.add('locked');
-  document.getElementById('saveBtn').style.display   = 'none';
-  document.getElementById('unlockBtn').style.display = 'block';
+  document.getElementById('editBar').style.display = 'flex';
 }
 function unlockDay() {
   isLocked = false;
   document.getElementById('content').classList.remove('locked');
-  document.getElementById('saveBtn').style.display   = 'block';
-  document.getElementById('unlockBtn').style.display = 'none';
+  document.getElementById('editBar').style.display = 'none';
 }
 
 // =============================================
-// Renderöinti
+// Render
 // =============================================
 function render() {
-  let kcal=0, carbs=0, fat=0;
+  let totalKcal=0, totalCarbs=0, totalFat=0, trainKcal=0;
 
   MEALS.forEach(meal => {
-    const box = document.querySelector(`#${meal} .foods`);
+    let mealKcal=0;
+    const box = document.getElementById('foods-'+meal);
     box.innerHTML = '';
     dayEntries[meal].forEach((e,i) => {
       const f = foodsDB[e.name];
       if (!f) return;
-      const kVal = e.grams * f.kcal  / 100;
-      const cVal = e.grams * f.carbs / 100;
-      const rVal = e.grams * f.fat   / 100;
-      kcal  += kVal; carbs += cVal; fat += rVal;
-      box.innerHTML += `<div class="item">
-        ${f.label} ${e.grams} g
-        (${Math.round(kVal)} kcal, ${Math.round(cVal)} hh, ${Math.round(rVal)} r)
-        <button onclick="removeFood('${meal}',${i})">❌</button>
+      const k = e.grams * f.kcal  / 100;
+      const c = e.grams * f.carbs / 100;
+      const r = e.grams * f.fat   / 100;
+      totalKcal += k; totalCarbs += c; totalFat += r; mealKcal += k;
+      box.innerHTML += `<div class="food-item">
+        <span class="food-item-name">${f.label}</span>
+        <span class="food-item-meta">${e.grams}g · ${Math.round(k)} kcal · ${Math.round(c)} hh · ${Math.round(r)} r</span>
+        <button class="danger" onclick="removeFood('${meal}',${i})">✕</button>
       </div>`;
     });
+    document.getElementById('kcal-'+meal).textContent = Math.round(mealKcal) + ' kcal';
   });
 
-  const trainBox = document.getElementById('trainings');
-  trainBox.innerHTML = '';
-  let trainKcal = 0;
+  // Treenit
+  const tBox = document.getElementById('foods-treenit');
+  tBox.innerHTML = '';
   trainingEntries.forEach((t,i) => {
     trainKcal += t.kcal;
-    trainBox.innerHTML += `<div class="item">
-      ${t.name} (${t.kcal} kcal)
-      <button onclick="removeTraining(${i})">❌</button>
+    tBox.innerHTML += `<div class="food-item">
+      <span class="food-item-name">${t.name}</span>
+      <span class="food-item-meta">${t.kcal} kcal</span>
+      <button class="danger" onclick="removeTraining(${i})">✕</button>
     </div>`;
   });
+  document.getElementById('kcal-treenit').textContent = trainKcal + ' kcal';
 
-  document.getElementById('summary').innerHTML = `
-    Ruoasta: ${Math.round(kcal)} kcal, ${Math.round(carbs)} hh, ${Math.round(fat)} r<br>
-    Perusaineenvaihdunta: ${BMR} kcal<br>
-    Treeneistä: ${trainKcal} kcal<br><br>
-    <strong>Netto: ${Math.round(kcal-(BMR+trainKcal))} kcal,
-    ${Math.round(carbs-CARB_TARGET)} hh,
-    ${Math.round(fat-FAT_TARGET)} r</strong>
-  `;
+  // Banner
+  const netKcal  = Math.round(totalKcal - (BMR + trainKcal));
+  const netCarbs = Math.round(totalCarbs - CARB_TARGET);
+  const netFat   = Math.round(totalFat - FAT_TARGET);
 
-  renderFiveDaySummary();
+  function valClass(n) { return n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero'; }
+
+  setVal('bannerKcal',  netKcal,  valClass(netKcal));
+  setVal('bannerCarbs', netCarbs, valClass(netCarbs));
+  setVal('bannerFat',   netFat,   valClass(netFat));
+
+  document.getElementById('bannerKcalSub').textContent  = `${Math.round(totalKcal)} / ${BMR + trainKcal} kcal`;
+  document.getElementById('bannerCarbsSub').textContent = `${Math.round(totalCarbs)} / ${CARB_TARGET} g`;
+  document.getElementById('bannerFatSub').textContent   = `${Math.round(totalFat)} / ${FAT_TARGET} g`;
+
+  // Progress bar
+  const pct = Math.min((totalKcal / (BMR + trainKcal)) * 100, 120);
+  const fill = document.getElementById('progressFill');
+  fill.style.width = pct + '%';
+  fill.style.background = pct > 100 ? 'var(--neg)' : pct > 80 ? 'var(--accent)' : 'var(--pos)';
+  document.getElementById('progressText').textContent =
+    `${Math.round(totalKcal)} / ${BMR + trainKcal} kcal`;
+}
+
+function setVal(id, val, cls) {
+  const el = document.getElementById(id);
+  el.textContent = (val > 0 ? '+' : '') + val;
+  el.className = 'value ' + cls;
 }
 
 // =============================================
-// 5 päivän koonti
+// 5 päivän koonti — haetaan vain kerran per päivä
 // =============================================
-async function renderFiveDaySummary() {
-  const dateStr = document.getElementById('date').value;
-  if (!dateStr) return;
-  let html = `<h3>5 päivän koonti</h3><div class="summary-boxes">`;
-  let totalKcal=0, totalCarbs=0, totalFat=0;
+async function renderFiveDaySummary(dateStr) {
+  const grid  = document.getElementById('fiveDayGrid');
+  const total = document.getElementById('fiveDayTotal');
+  grid.innerHTML = '<div style="color:var(--muted);font-size:0.7rem;grid-column:1/-1">Ladataan...</div>';
+
+  let tKcal=0, tCarbs=0, tFat=0;
+  let html = '';
 
   for (let i=1; i<=5; i++) {
     const d = new Date(dateStr);
     d.setDate(d.getDate()-i);
     const key = d.toISOString().split('T')[0];
+    const shortDate = d.toLocaleDateString('fi',{weekday:'short',day:'numeric',month:'numeric'});
+
     try {
       const days = await sbGet(`days?date=eq.${key}&select=id,bmr`);
-      if (!days.length) { html += noDataBox(i); continue; }
+      if (!days.length) { html += noCard(i, shortDate); continue; }
       const [entries, trainings] = await Promise.all([
         sbGet(`food_entries?day_id=eq.${days[0].id}&select=grams,foods(kcal_per_100g,carbs_per_100g,fat_per_100g)`),
         sbGet(`training_entries?day_id=eq.${days[0].id}&select=kcal`)
       ]);
-      let fKcal=0, fCarbs=0, fFat=0;
-      entries.forEach(e => {
-        fKcal  += e.grams * e.foods.kcal_per_100g  / 100;
-        fCarbs += e.grams * e.foods.carbs_per_100g / 100;
-        fFat   += e.grams * e.foods.fat_per_100g   / 100;
-      });
-      const tk     = trainings.reduce((s,t)=>s+t.kcal,0);
-      const nKcal  = Math.round(fKcal  - (days[0].bmr + tk));
-      const nCarbs = Math.round(fCarbs - CARB_TARGET);
-      const nFat   = Math.round(fFat   - FAT_TARGET);
-      totalKcal += nKcal; totalCarbs += nCarbs; totalFat += nFat;
-      const cls = nKcal>0?'positive':nKcal<0?'negative':'zero';
-      html += `<div class="summary-box ${cls}"><h4>-${i}</h4>${nKcal} kcal<br>${nCarbs} hh<br>${nFat} r</div>`;
-    } catch { html += noDataBox(i); }
+      let fK=0,fC=0,fF=0;
+      entries.forEach(e=>{ fK+=e.grams*e.foods.kcal_per_100g/100; fC+=e.grams*e.foods.carbs_per_100g/100; fF+=e.grams*e.foods.fat_per_100g/100; });
+      const tk = trainings.reduce((s,t)=>s+t.kcal,0);
+      const nK = Math.round(fK-(days[0].bmr+tk));
+      const nC = Math.round(fC-CARB_TARGET);
+      const nF = Math.round(fF-FAT_TARGET);
+      tKcal+=nK; tCarbs+=nC; tFat+=nF;
+      const cls = nK>0?'pos':nK<0?'neg':'zero';
+      html += `<div class="day-card ${cls}">
+        <div class="day-label">${shortDate}</div>
+        <div class="day-kcal">${nK>0?'+':''}${nK}</div>
+        <div class="day-macros">${nC>0?'+':''}${nC} hh<br>${nF>0?'+':''}${nF} r</div>
+      </div>`;
+    } catch { html += noCard(i, shortDate); }
   }
 
-  html += `</div><br><strong>Yhteensä: ${totalKcal} kcal, ${totalCarbs} hh, ${totalFat} r</strong>`;
-  document.getElementById('fiveDaySummary').innerHTML = html;
+  grid.innerHTML = html;
+  total.innerHTML = `Yhteensä: <span>${tKcal>0?'+':''}${tKcal} kcal</span> · <span>${tCarbs>0?'+':''}${tCarbs} hh</span> · <span>${tFat>0?'+':''}${tFat} r</span>`;
 }
 
-function noDataBox(i) {
-  return `<div class="summary-box nodata"><h4>-${i}</h4>Ei dataa</div>`;
+function noCard(i, label) {
+  return `<div class="day-card nodata"><div class="day-label">${label}</div><div class="day-kcal">—</div></div>`;
 }
 
 // =============================================
@@ -431,23 +1025,19 @@ async function downloadCSV() {
   setStatus('Haetaan...');
   try {
     const days = await sbGet('days?select=id,date,bmr&order=date.asc');
-    let csv = 'Päivämäärä,Kalorit ruoasta,Hiilihydraatit,Rasva,Treenien kalorit,Perusaineenvaihdunta,Netto kcal,Netto hh,Netto r\n';
+    let csv = 'Päivämäärä,Kalorit ruoasta,Hiilihydraatit,Rasva,Treenien kalorit,BMR,Netto kcal,Netto hh,Netto r\n';
     for (const day of days) {
       const [entries, trainings] = await Promise.all([
         sbGet(`food_entries?day_id=eq.${day.id}&select=grams,foods(kcal_per_100g,carbs_per_100g,fat_per_100g)`),
         sbGet(`training_entries?day_id=eq.${day.id}&select=kcal`)
       ]);
-      let fKcal=0, fCarbs=0, fFat=0;
-      entries.forEach(e => {
-        fKcal  += e.grams * e.foods.kcal_per_100g  / 100;
-        fCarbs += e.grams * e.foods.carbs_per_100g / 100;
-        fFat   += e.grams * e.foods.fat_per_100g   / 100;
-      });
-      const tk = trainings.reduce((s,t)=>s+t.kcal,0);
-      csv += `${day.date},${Math.round(fKcal)},${Math.round(fCarbs)},${Math.round(fFat)},${tk},${day.bmr},${Math.round(fKcal-(day.bmr+tk))},${Math.round(fCarbs-CARB_TARGET)},${Math.round(fFat-FAT_TARGET)}\n`;
+      let fK=0,fC=0,fF=0;
+      entries.forEach(e=>{ fK+=e.grams*e.foods.kcal_per_100g/100; fC+=e.grams*e.foods.carbs_per_100g/100; fF+=e.grams*e.foods.fat_per_100g/100; });
+      const tk=trainings.reduce((s,t)=>s+t.kcal,0);
+      csv+=`${day.date},${Math.round(fK)},${Math.round(fC)},${Math.round(fF)},${tk},${day.bmr},${Math.round(fK-(day.bmr+tk))},${Math.round(fC-CARB_TARGET)},${Math.round(fF-FAT_TARGET)}\n`;
     }
-    downloadBlob(csv, 'ruokaseuranta_backup.csv', 'text/csv;charset=utf-8;');
-    setStatus('CSV ladattu ✓','ok');
+    dlBlob(csv,'ruokaseuranta.csv','text/csv;charset=utf-8;');
+    setStatus('CSV valmis ✓','ok');
   } catch(e) { setStatus('Virhe: '+e.message,'error'); }
 }
 
@@ -466,12 +1056,12 @@ async function exportJSON() {
       ]);
       out[day.date] = {
         bmr:       day.bmr,
-        foods:     entries.map(e => ({ name:e.foods.name, grams:e.grams, meal:e.meal, source:e.source })),
-        trainings: trainings.map(t => ({ name:t.name, kcal:t.kcal }))
+        foods:     entries.map(e=>({ name:e.foods.name, grams:e.grams, meal:e.meal, source:e.source })),
+        trainings: trainings.map(t=>({ name:t.name, kcal:t.kcal }))
       };
     }
-    downloadBlob(JSON.stringify(out,null,2), 'ruokaseuranta_backup.json', 'application/json');
-    setStatus('JSON ladattu ✓','ok');
+    dlBlob(JSON.stringify(out,null,2),'ruokaseuranta.json','application/json');
+    setStatus('JSON valmis ✓','ok');
   } catch(e) { setStatus('Virhe: '+e.message,'error'); }
 }
 
@@ -481,47 +1071,37 @@ async function exportJSON() {
 async function importJSON(e) {
   const file = e.target.files[0];
   if (!file) return;
-  const text = await file.text();
-  const data = JSON.parse(text);
-  setStatus('Tuodaan dataa...');
-  let count = 0;
+  const data = JSON.parse(await file.text());
+  setStatus('Tuodaan...');
+  let count=0;
   try {
     for (const [dateStr, day] of Object.entries(data)) {
       let existing = await sbGet(`days?date=eq.${dateStr}&select=id`);
-      let dId;
-      if (existing.length > 0) {
-        dId = existing[0].id;
-      } else {
-        const result = await sbPost('days', { date:dateStr, bmr:day.bmr||BMR });
-        dId = result[0].id;
-      }
+      let dId = existing.length > 0
+        ? existing[0].id
+        : (await sbPost('days',{ date:dateStr, bmr:day.bmr||BMR }))[0].id;
       for (const f of day.foods||[]) {
-        const entry = Object.entries(foodsDB).find(([name]) => name === f.name);
+        const entry = Object.entries(foodsDB).find(([n])=>n===f.name);
         if (!entry) continue;
-        await sbPost('food_entries', {
-          day_id:f.food_id ? undefined : undefined, // placeholder
-          ...{ day_id:dId, meal:f.meal, food_id:entry[1].id, grams:f.grams, source:f.source||'import' }
-        });
+        await sbPost('food_entries',{ day_id:dId, meal:f.meal, food_id:entry[1].id, grams:f.grams, source:f.source||'import' });
       }
       for (const t of day.trainings||[]) {
-        await sbPost('training_entries', { day_id:dId, name:t.name, kcal:t.kcal });
+        await sbPost('training_entries',{ day_id:dId, name:t.name, kcal:t.kcal });
       }
       count++;
     }
     setStatus(`Tuotu ${count} päivää ✓`,'ok');
     await loadDay(document.getElementById('date').value);
-  } catch(err) { setStatus('Tuontivirhe: '+err.message,'error'); }
-  e.target.value = '';
+  } catch(err) { setStatus('Virhe: '+err.message,'error'); }
+  e.target.value='';
 }
 
-function downloadBlob(content, filename, type) {
-  const blob = new Blob([content], { type });
-  const a    = document.createElement('a');
-  a.href     = URL.createObjectURL(blob);
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+function dlBlob(content, filename, type) {
+  const a = Object.assign(document.createElement('a'),{
+    href: URL.createObjectURL(new Blob([content],{type})),
+    download: filename
+  });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 // =============================================
