@@ -496,7 +496,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
         <div class="add-row">
           <select id="sel-aamupala" onchange="onFoodSelect('aamupala')"></select>
           <input type="number" id="g-aamupala" placeholder="g" min="1" max="2000" oninput="syncSlider('aamupala')">
-          <button onclick="addFood('aamupala')" class="primary">+</button>
+          <button onclick="addFood('aamupala')" class="primary" id="addbtn-aamupala" style="display:none">+</button>
         </div>
         <div class="quick-picks" id="quick-aamupala"></div>
         <div class="slider-row" id="slider-row-aamupala" style="display:none">
@@ -520,7 +520,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
         <div class="add-row">
           <select id="sel-lounas" onchange="onFoodSelect('lounas')"></select>
           <input type="number" id="g-lounas" placeholder="g" min="1" max="2000" oninput="syncSlider('lounas')">
-          <button onclick="addFood('lounas')" class="primary">+</button>
+          <button onclick="addFood('lounas')" class="primary" id="addbtn-lounas" style="display:none">+</button>
         </div>
         <div class="quick-picks" id="quick-lounas"></div>
         <div class="slider-row" id="slider-row-lounas" style="display:none">
@@ -544,7 +544,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
         <div class="add-row">
           <select id="sel-valipalat" onchange="onFoodSelect('valipalat')"></select>
           <input type="number" id="g-valipalat" placeholder="g" min="1" max="2000" oninput="syncSlider('valipalat')">
-          <button onclick="addFood('valipalat')" class="primary">+</button>
+          <button onclick="addFood('valipalat')" class="primary" id="addbtn-valipalat" style="display:none">+</button>
         </div>
         <div class="quick-picks" id="quick-valipalat"></div>
         <div class="slider-row" id="slider-row-valipalat" style="display:none">
@@ -568,7 +568,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
         <div class="add-row">
           <select id="sel-illallinen" onchange="onFoodSelect('illallinen')"></select>
           <input type="number" id="g-illallinen" placeholder="g" min="1" max="2000" oninput="syncSlider('illallinen')">
-          <button onclick="addFood('illallinen')" class="primary">+</button>
+          <button onclick="addFood('illallinen')" class="primary" id="addbtn-illallinen" style="display:none">+</button>
         </div>
         <div class="quick-picks" id="quick-illallinen"></div>
         <div class="slider-row" id="slider-row-illallinen" style="display:none">
@@ -592,7 +592,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
         <div class="add-row">
           <select id="sel-iltapala" onchange="onFoodSelect('iltapala')"></select>
           <input type="number" id="g-iltapala" placeholder="g" min="1" max="2000" oninput="syncSlider('iltapala')">
-          <button onclick="addFood('iltapala')" class="primary">+</button>
+          <button onclick="addFood('iltapala')" class="primary" id="addbtn-iltapala" style="display:none">+</button>
         </div>
         <div class="quick-picks" id="quick-iltapala"></div>
         <div class="slider-row" id="slider-row-iltapala" style="display:none">
@@ -743,16 +743,19 @@ function setGrams(meal, g) {
 }
 
 function onFoodSelect(meal) {
-  const sel = document.getElementById('sel-'+meal);
-  const inp = document.getElementById('g-'+meal);
+  const sel       = document.getElementById('sel-'+meal);
+  const inp       = document.getElementById('g-'+meal);
   const sliderRow = document.getElementById('slider-row-'+meal);
+  const addBtn    = document.getElementById('addbtn-'+meal);
   if (sel.value) {
     const def = foodsDB[sel.value].default_grams;
     inp.value = def || '';
     syncSlider(meal);
     sliderRow.style.display = 'flex';
+    addBtn.style.display    = 'inline-block';
   } else {
     sliderRow.style.display = 'none';
+    addBtn.style.display    = 'none';
     inp.value = '';
   }
 }
@@ -846,6 +849,7 @@ async function addFood(meal) {
     dayEntries[meal].push({ entryId:result[0].id, name:sel.value, grams });
     sel.value = ''; ginp.value = '';
     document.getElementById('slider-row-'+meal).style.display = 'none';
+    document.getElementById('addbtn-'+meal).style.display     = 'none';
     setStatus('');
     render();
   } catch(e) { setStatus('Virhe: '+e.message, 'error'); }
@@ -853,6 +857,7 @@ async function addFood(meal) {
 
 async function removeFood(meal, i) {
   if (isLocked) return;
+  if (!confirm(`Poistetaanko ${foodsDB[dayEntries[meal][i].name]?.label ?? dayEntries[meal][i].name}?`)) return;
   try {
     await sbDelete(`food_entries?id=eq.${dayEntries[meal][i].entryId}`);
     dayEntries[meal].splice(i,1);
@@ -880,6 +885,7 @@ async function addTraining() {
 
 async function removeTraining(i) {
   if (isLocked) return;
+  if (!confirm(`Poistetaanko ${trainingEntries[i].name}?`)) return;
   try {
     await sbDelete(`training_entries?id=eq.${trainingEntries[i].entryId}`);
     trainingEntries.splice(i,1);
