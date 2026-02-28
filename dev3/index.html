@@ -566,15 +566,20 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 <div class="header">
   <div class="header-title">
     <h1>Ruokaseuranta</h1>
-    <p>v2.5 — Supabase</p>
+    <p>v2.5.1 — Supabase</p>
   </div>
   <div class="header-actions">
     <button class="theme-btn ghost" onclick="toggleTheme()" id="themeBtn">☀️</button>
     <button onclick="downloadCSV()" class="ghost">CSV</button>
     <button onclick="exportJSON()" class="ghost">JSON</button>
     <button onclick="document.getElementById('jsonImport').click()" class="ghost">Tuo JSON</button>
-    <button onclick="openAddFoodModal()" class="ghost">+ Ruoka</button>
-    <button onclick="openRecipeFoodModal()" class="ghost">+ Resepti</button>
+    <div style="position:relative;display:inline-block" id="addFoodWrap">
+      <button onclick="toggleAddFoodPicker()" class="ghost">+ Ruoka</button>
+      <div class="search-dropdown" id="addFoodPicker" style="min-width:160px">
+        <div class="search-option" onclick="closeAddFoodPicker();openAddFoodModal()">Manuaalinen</div>
+        <div class="search-option" onclick="closeAddFoodPicker();openRecipeFoodModal()">Reseptistä</div>
+      </div>
+    </div>
     <button onclick="openIngredientsModal()" class="ghost">🧂 Raaka-aineet</button>
     <button onclick="openPresetsModal()" class="ghost">📋 Vakioateriat</button>
     <input type="file" id="jsonImport" accept=".json" onchange="importJSON(event)" style="display:none">
@@ -692,7 +697,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 <div class="modal-backdrop" id="recipeFoodModal" style="align-items:flex-start;padding-top:2rem">
   <div class="modal" style="max-width:540px;overflow:visible">
     <h3>Luo ruoka reseptistä</h3>
-    <div id="recipeFoodContent"></div>
+    <div id="recipeFoodContent" style="max-height:75vh;overflow-y:auto;overflow-x:visible"></div>
   </div>
 </div>
 
@@ -749,6 +754,18 @@ if (savedTheme) {
   document.documentElement.setAttribute('data-theme', savedTheme);
   document.getElementById('themeBtn').textContent = savedTheme === 'light' ? '🌙' : '☀️';
 }
+
+// + Ruoka picker
+function toggleAddFoodPicker() {
+  document.getElementById('addFoodPicker').classList.toggle('open');
+}
+function closeAddFoodPicker() {
+  document.getElementById('addFoodPicker').classList.remove('open');
+}
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('addFoodWrap');
+  if (wrap && !wrap.contains(e.target)) closeAddFoodPicker();
+});
 
 // =============================================
 // Supabase
@@ -1977,6 +1994,7 @@ function renderIngredientsModalList() {
       html += `<div class="ingredient-card">
         <span class="ingredient-card-name">${ing.label}</span>
         <span class="ingredient-card-meta">${ing.kcal} kcal · ${ing.carbs} hh · ${ing.fat} r /100g</span>
+        <button class="edit-btn" onclick="renderIngredientEditForm('${name}')" title="Muokkaa">✏️</button>
         <button class="danger" onclick="deleteIngredient('${name}')" title="Poista">✕</button>
       </div>`;
     });
@@ -1987,37 +2005,48 @@ function renderIngredientsModalList() {
 }
 
 function renderIngredientCreateForm() {
+  renderIngredientForm('Lisää raaka-aine', '', '', 0, 0, 0, null);
+}
+
+function renderIngredientEditForm(name) {
+  const ing = ingredientsDB[name];
+  if (!ing) return;
+  renderIngredientForm('Muokkaa raaka-ainetta', name, ing.label, ing.kcal, ing.carbs, ing.fat, name);
+}
+
+function renderIngredientForm(titleText, name, label, kcal, carbs, fat, editName) {
   const title = document.getElementById('ingredientsModalTitle');
   const content = document.getElementById('ingredientsModalContent');
-  title.textContent = 'Lisää raaka-aine';
+  title.textContent = titleText;
 
   content.innerHTML = `
     <div class="modal-field">
       <label class="preset-section-label">Nimi (tunniste)</label>
-      <input type="text" id="ing-name" placeholder="esim. kananrinta">
+      <input type="text" id="ing-name" value="${name}" placeholder="esim. kananrinta" ${editName ? 'disabled style="opacity:0.6"' : ''}>
     </div>
     <div class="modal-field">
       <label class="preset-section-label">Näyttönimi</label>
-      <input type="text" id="ing-label" placeholder="esim. Kananrinta">
+      <input type="text" id="ing-label" value="${label}" placeholder="esim. Kananrinta">
     </div>
     <div class="modal-field">
       <label class="preset-section-label">Kalorit / 100g</label>
-      <input type="number" id="ing-kcal" placeholder="0" step="0.1">
+      <input type="number" id="ing-kcal" value="${kcal || ''}" placeholder="0" step="0.1">
     </div>
     <div class="modal-field">
       <label class="preset-section-label">Hiilihydraatit / 100g</label>
-      <input type="number" id="ing-carbs" placeholder="0" step="0.1">
+      <input type="number" id="ing-carbs" value="${carbs || ''}" placeholder="0" step="0.1">
     </div>
     <div class="modal-field">
       <label class="preset-section-label">Rasva / 100g</label>
-      <input type="number" id="ing-fat" placeholder="0" step="0.1">
+      <input type="number" id="ing-fat" value="${fat || ''}" placeholder="0" step="0.1">
     </div>
     <div class="modal-actions">
       <button class="ghost" onclick="renderIngredientsModalList()">Peruuta</button>
-      <button class="primary" onclick="submitNewIngredient()">Lisää</button>
+      <button class="primary" onclick="${editName ? `updateIngredient('${editName}')` : 'submitNewIngredient()'}">${editName ? 'Tallenna' : 'Lisää'}</button>
     </div>
   `;
-  document.getElementById('ing-name').focus();
+  if (!editName) document.getElementById('ing-name').focus();
+  else document.getElementById('ing-label').focus();
 }
 
 async function submitNewIngredient() {
@@ -2035,6 +2064,26 @@ async function submitNewIngredient() {
     });
     ingredientsDB[name] = { id: result[0].id, label, kcal, carbs, fat };
     setStatus(`${label} lisätty ✓`, 'ok');
+    renderIngredientsModalList();
+  } catch(e) { alert('Virhe: '+e.message); }
+}
+
+async function updateIngredient(name) {
+  const ing = ingredientsDB[name];
+  if (!ing) return;
+  const label = document.getElementById('ing-label').value.trim();
+  const kcal  = parseFloat(document.getElementById('ing-kcal').value) || 0;
+  const carbs = parseFloat(document.getElementById('ing-carbs').value) || 0;
+  const fat   = parseFloat(document.getElementById('ing-fat').value) || 0;
+
+  if (!label) { alert('Näyttönimi on pakollinen.'); return; }
+
+  try {
+    await sbPatch(`ingredients?id=eq.${ing.id}`, {
+      label, kcal_per_100g: kcal, carbs_per_100g: carbs, fat_per_100g: fat
+    });
+    ing.label = label; ing.kcal = kcal; ing.carbs = carbs; ing.fat = fat;
+    setStatus(`${label} päivitetty ✓`, 'ok');
     renderIngredientsModalList();
   } catch(e) { alert('Virhe: '+e.message); }
 }
@@ -2106,8 +2155,7 @@ function renderRecipeFoodForm() {
     </div>
     <div class="modal-field">
       <label class="preset-section-label">Ainekset</label>
-      <div class="preset-builder-items" id="recipe-items">${itemsHtml}</div>
-      <div style="margin-top:0.6rem">
+      <div style="margin-bottom:0.6rem">
         <div class="add-row">
           <div class="search-wrap" id="recipe-searchwrap">
             <input type="text" id="recipe-ing-search"
@@ -2121,6 +2169,7 @@ function renderRecipeFoodForm() {
           <button class="primary" onclick="addRecipeItem()" id="recipe-add-btn" style="display:none">+</button>
         </div>
       </div>
+      <div class="preset-builder-items" id="recipe-items">${itemsHtml}</div>
       ${recipeFormItems.length ? `
       <div class="recipe-calc">
         <div class="recipe-calc-title">Lasketut arvot per 100g</div>
