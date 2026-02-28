@@ -431,6 +431,22 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
   .banner-box .value { font-size: 1.2rem; }
   input[type="number"] { width: 70px; }
 }
+
+/* ── DEV BANNER ── */
+.dev-banner {
+  background: #b04040;
+  color: #fff;
+  text-align: center;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  position: sticky;
+  top: 0;
+  z-index: 300;
+  margin: -1.5rem -1rem 1rem;
+}
 </style>
 </head>
 <body>
@@ -438,7 +454,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 <div class="header">
   <div class="header-title">
     <h1>Ruokaseuranta</h1>
-    <p>v2.4 — Supabase</p>
+    <p>v2.4.1 — Supabase</p>
   </div>
   <div class="header-actions">
     <button class="theme-btn ghost" onclick="toggleTheme()" id="themeBtn">☀️</button>
@@ -554,8 +570,21 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 // =============================================
 // ASETUKSET
 // =============================================
-const SUPABASE_URL = 'https://utpvflesczynuwnnembf.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_szsKwGkJ9IYiVZX11HxfOQ_IpGPQxs2';
+// ── DEV-YMPÄRISTÖ ──
+const SUPABASE_URL = 'https://slgmbhinbjybvcsxnogl.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsZ21iaGluYmp5YnZjc3hub2dsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIyNTc4NzYsImV4cCI6MjA4NzgzMzg3Nn0.qxVfr1qfkqYCDDRHpR9Nk1Rcpcwi7NxU_7vXgE-gJHU';
+// ── Tuotantoon vietäessä vaihda nämä: ──
+// const SUPABASE_URL = 'https://utpvflesczynuwnnembf.supabase.co';
+// const SUPABASE_KEY = 'sb_publishable_szsKwGkJ9IYiVZX11HxfOQ_IpGPQxs2';
+
+document.title = 'Ruokaseuranta (DEV)';
+{
+  const banner = document.createElement('div');
+  banner.className = 'dev-banner';
+  banner.textContent = '⚠ DEV-YMPÄRISTÖ';
+  document.body.prepend(banner);
+}
+
 const BMR          = 2000;
 const CARB_TARGET  = 432;
 const FAT_TARGET   = 72;
