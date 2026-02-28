@@ -442,6 +442,8 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 .preset-card-toggle {
   cursor: pointer;
   user-select: none;
+  flex: 1;
+  padding: 0.3rem 0;
 }
 .preset-card-chevron {
   font-size: 0.65rem;
@@ -519,7 +521,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 <div class="header">
   <div class="header-title">
     <h1>Ruokaseuranta</h1>
-    <p>v2.4.2 — Supabase</p>
+    <p>v2.4.3 — Supabase</p>
   </div>
   <div class="header-actions">
     <button class="theme-btn ghost" onclick="toggleTheme()" id="themeBtn">☀️</button>
@@ -841,7 +843,7 @@ function buildMealSections() {
               <input type="range" id="slider-${meal}" min="1" max="500" oninput="syncInput('${meal}')">
               <span class="slider-label right" id="slider-max-${meal}">500g</span>
             </div>
-            <div style="position:relative" id="presetwrap-${meal}">
+            <div style="position:relative;width:25%;min-width:180px" id="presetwrap-${meal}">
               <button class="preset-btn" onclick="togglePresetPicker('${meal}')" style="width:100%">📋 Vakioateria</button>
               <div class="preset-picker" id="presetpicker-${meal}"></div>
             </div>
@@ -947,10 +949,10 @@ function selectFood(meal, name) {
   const ginp       = document.getElementById('g-'+meal);
   const sliderRow  = document.getElementById('slider-row-'+meal);
   const addBtn     = document.getElementById('addbtn-'+meal);
-  ginp.value       = f.default_grams || '';
+  ginp.value       = f.default_grams > 0 ? f.default_grams : '';
   sliderRow.style.display = 'flex';
   addBtn.style.display    = 'inline-block';
-  updateSliderRange(meal, f.default_grams || 100);
+  updateSliderRange(meal, f.default_grams > 0 ? f.default_grams : 100);
   syncSlider(meal);
 }
 
@@ -1593,7 +1595,7 @@ function selectPresetFood(name) {
   presetSelectedFood = name;
   document.getElementById('preset-search').value = f.label;
   closePresetDropdown();
-  document.getElementById('preset-grams').value = f.default_grams || '';
+  document.getElementById('preset-grams').value = f.default_grams > 0 ? f.default_grams : '';
   document.getElementById('preset-add-btn').style.display = 'inline-block';
 }
 
