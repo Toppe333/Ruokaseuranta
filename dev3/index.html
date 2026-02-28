@@ -393,8 +393,8 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 .preset-picker {
   display: none;
   position: absolute;
-  top: calc(100% + 4px);
   left: 0; right: 0;
+  bottom: calc(100% + 4px);
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r);
@@ -413,18 +413,83 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 .preset-pick-item:last-child { border-bottom: none; }
 .preset-pick-item:hover { background: var(--surface2); }
 .preset-pick-name { font-size: 0.78rem; color: var(--accent); font-weight: 500; }
-.preset-pick-foods { font-size: 0.65rem; color: var(--muted); margin-top: 0.2rem; }
 .preset-pick-empty { padding: 0.6rem 0.8rem; font-size: 0.72rem; color: var(--muted); font-style: italic; }
 
 /* Preset builder items in modal */
 .preset-builder-items { margin-top: 0.5rem; }
 .preset-builder-item {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0.4rem 0; border-bottom: 1px solid var(--border); gap: 0.5rem;
+  padding: 0.4rem 0 0.4rem 0.75rem; border-bottom: 1px solid var(--border); gap: 0.5rem;
 }
 .preset-builder-item:last-child { border-bottom: none; }
 .preset-builder-item-name { font-size: 0.78rem; flex: 1; }
 .preset-builder-item-grams { font-size: 0.72rem; color: var(--muted); }
+
+/* Preset form section labels */
+.preset-section-label {
+  display: block;
+  font-family: 'Fraunces', serif;
+  font-size: 0.85rem;
+  font-weight: 300;
+  font-style: italic;
+  color: var(--accent);
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Preset card — collapsible */
+.preset-card-toggle {
+  cursor: pointer;
+  user-select: none;
+}
+.preset-card-chevron {
+  font-size: 0.65rem;
+  color: var(--muted);
+  transition: transform 0.2s;
+  margin-left: 0.4rem;
+}
+.preset-card.expanded .preset-card-chevron { transform: rotate(180deg); }
+.preset-card-foods {
+  display: none;
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  padding-left: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.preset-card.expanded .preset-card-foods { display: block; }
+.preset-card-food-item { font-size: 0.7rem; color: var(--muted); padding: 0.15rem 0; }
+.preset-card-food-item span { color: var(--text); }
+
+/* Preset search dropdown in modal — fixed position to escape overflow */
+.preset-search-dropdown-fixed {
+  position: fixed;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 300;
+  box-shadow: 0 4px 16px var(--shadow);
+}
+.preset-search-dropdown-fixed .search-option {
+  padding: 0.5rem 0.7rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.1s;
+  color: var(--text);
+}
+.preset-search-dropdown-fixed .search-option:hover,
+.preset-search-dropdown-fixed .search-option.active { background: var(--surface2); color: var(--accent); }
+.preset-search-dropdown-fixed .search-option.no-results { color: var(--muted); cursor: default; font-style: italic; }
+
+/* Preset no-meals hint */
+.preset-no-meals-hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-style: italic;
+  padding: 0.4rem 0;
+}
 
 /* ── RESPONSIVE ── */
 @media (max-width: 500px) {
@@ -454,7 +519,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 <div class="header">
   <div class="header-title">
     <h1>Ruokaseuranta</h1>
-    <p>v2.4.1 — Supabase</p>
+    <p>v2.4.2 — Supabase</p>
   </div>
   <div class="header-actions">
     <button class="theme-btn ghost" onclick="toggleTheme()" id="themeBtn">☀️</button>
@@ -559,10 +624,10 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 </div>
 
 <!-- VAKIOATERIAT HALLINTAMODAL -->
-<div class="modal-backdrop" id="presetsModal">
-  <div class="modal" style="max-width:540px">
+<div class="modal-backdrop" id="presetsModal" style="align-items:flex-start;padding-top:2rem">
+  <div class="modal" style="max-width:540px;overflow:visible">
     <h3 id="presetsModalTitle">Vakioateriat</h3>
-    <div id="presetsModalContent"></div>
+    <div id="presetsModalContent" style="max-height:75vh;overflow-y:auto;overflow-x:visible"></div>
   </div>
 </div>
 
@@ -770,17 +835,15 @@ function buildMealSections() {
               <input type="number" id="g-${meal}" placeholder="g" min="1" max="9999" oninput="syncSlider('${meal}')">
               <button onclick="addFood('${meal}')" class="primary" id="addbtn-${meal}" style="display:none">+</button>
             </div>
-            <div class="add-row-extra">
-              <div style="position:relative;display:inline-block" id="presetwrap-${meal}">
-                <button class="preset-btn" onclick="togglePresetPicker('${meal}')">📋 Vakioateria</button>
-                <div class="preset-picker" id="presetpicker-${meal}"></div>
-              </div>
-            </div>
             <div class="quick-picks" id="quick-${meal}"></div>
             <div class="slider-row" id="slider-row-${meal}" style="display:none">
               <span class="slider-label" id="slider-min-${meal}">1g</span>
               <input type="range" id="slider-${meal}" min="1" max="500" oninput="syncInput('${meal}')">
               <span class="slider-label right" id="slider-max-${meal}">500g</span>
+            </div>
+            <div style="position:relative" id="presetwrap-${meal}">
+              <button class="preset-btn" onclick="togglePresetPicker('${meal}')" style="width:100%">📋 Vakioateria</button>
+              <div class="preset-picker" id="presetpicker-${meal}"></div>
             </div>
           </div>
         </div>`;
@@ -1281,10 +1344,9 @@ function togglePresetPicker(meal) {
     picker.innerHTML = '<div class="preset-pick-empty">Ei vakioaterioita tälle aterialle</div>';
   } else {
     matching.forEach(p => {
-      const foodsDesc = p.items.map(it => `${it.food_label} ${it.grams}g`).join(', ');
       const div = document.createElement('div');
       div.className = 'preset-pick-item';
-      div.innerHTML = `<div class="preset-pick-name">${p.name}</div><div class="preset-pick-foods">${foodsDesc}</div>`;
+      div.innerHTML = `<div class="preset-pick-name">${p.name}</div>`;
       div.onclick = () => applyPreset(meal, p);
       picker.appendChild(div);
     });
@@ -1324,6 +1386,7 @@ function openPresetsModal() {
 }
 function closePresetsModal() {
   document.getElementById('presetsModal').classList.remove('open');
+  document.getElementById('preset-dropdown-fixed')?.remove();
 }
 
 function renderPresetsModalList() {
@@ -1339,13 +1402,13 @@ function renderPresetsModalList() {
     html += '<p style="font-size:0.78rem;color:var(--muted);font-style:italic">Ei vielä vakioaterioita.</p>';
   } else {
     html += '<div class="preset-list">';
-    presetsDB.forEach(p => {
+    presetsDB.forEach((p, pi) => {
       const mealLabels = p.meal_types.map(m => MEAL_LABELS[m] || m).join(', ');
       const foodsList = p.items.map(it => `<div class="preset-card-food-item"><span>${it.food_label}</span> ${it.grams}g</div>`).join('');
-      html += `<div class="preset-card">
+      html += `<div class="preset-card" id="preset-card-${pi}">
         <div class="preset-card-header">
-          <div>
-            <div class="preset-card-name">${p.name}</div>
+          <div class="preset-card-toggle" onclick="document.getElementById('preset-card-${pi}').classList.toggle('expanded')">
+            <div class="preset-card-name">${p.name} <span class="preset-card-chevron">▼</span></div>
             <div class="preset-card-meals">${mealLabels}</div>
           </div>
           <div class="preset-card-actions">
@@ -1370,6 +1433,7 @@ let presetFormEditId = null;
 function renderPresetCreateForm() {
   presetFormItems = [];
   presetFormEditId = null;
+  document.getElementById('preset-dropdown-fixed')?.remove();
   renderPresetForm('Luo vakioateria', '', [], []);
 }
 
@@ -1378,6 +1442,7 @@ function renderPresetEditForm(presetId) {
   if (!preset) return;
   presetFormEditId = presetId;
   presetFormItems = preset.items.map(it => ({ food_name: it.food_name, food_label: it.food_label, grams: it.grams }));
+  document.getElementById('preset-dropdown-fixed')?.remove();
   renderPresetForm('Muokkaa vakioateriaa', preset.name, preset.meal_types, presetFormItems);
 }
 
@@ -1388,7 +1453,7 @@ function renderPresetForm(title, name, mealTypes, items) {
 
   const mealChecks = MEALS.map(m => {
     const checked = mealTypes.includes(m) ? 'checked' : '';
-    return `<label class="meal-check"><input type="checkbox" value="${m}" ${checked}> ${MEAL_LABELS[m]}</label>`;
+    return `<label class="meal-check"><input type="checkbox" value="${m}" ${checked} onchange="onPresetMealTypeChange()"> ${MEAL_LABELS[m]}</label>`;
   }).join('');
 
   let itemsHtml = '';
@@ -1400,19 +1465,22 @@ function renderPresetForm(title, name, mealTypes, items) {
     </div>`;
   });
 
+  const hasSelectedMeals = mealTypes.length > 0;
+
   content.innerHTML = `
     <div class="modal-field">
-      <label>Nimi</label>
+      <label class="preset-section-label">Nimi</label>
       <input type="text" id="preset-name" value="${name}" placeholder="esim. Normaali aamupala">
     </div>
     <div class="modal-field">
-      <label>Ateriatyypit</label>
+      <label class="preset-section-label">Ateriatyypit</label>
       <div class="meal-checkboxes" id="preset-meals">${mealChecks}</div>
     </div>
     <div class="modal-field">
-      <label>Ruoat</label>
+      <label class="preset-section-label">Ruoat</label>
       <div class="preset-builder-items" id="preset-items">${itemsHtml}</div>
-      <div style="margin-top:0.6rem">
+      <div style="margin-top:0.6rem" id="preset-search-area">
+        ${hasSelectedMeals ? `
         <div class="add-row">
           <div class="search-wrap" id="preset-searchwrap">
             <input type="text" id="preset-search"
@@ -1421,11 +1489,10 @@ function renderPresetForm(title, name, mealTypes, items) {
               onfocus="filterPresetFoods()"
               onkeydown="presetSearchKeydown(event)"
               autocomplete="off">
-            <div class="search-dropdown" id="preset-dropdown"></div>
           </div>
           <input type="number" id="preset-grams" placeholder="g" min="1" max="9999" style="width:75px">
           <button class="primary" onclick="addPresetFormItem()" id="preset-add-btn" style="display:none">+</button>
-        </div>
+        </div>` : '<div class="preset-no-meals-hint">Valitse ensin ateriatyypit yllä</div>'}
       </div>
     </div>
     <div class="modal-actions">
@@ -1434,25 +1501,71 @@ function renderPresetForm(title, name, mealTypes, items) {
     </div>
   `;
 
-  // Close preset dropdown on outside click
-  setTimeout(() => {
-    const wrap = document.getElementById('preset-searchwrap');
-    document.getElementById('presetsModalContent').addEventListener('click', e => {
-      if (wrap && !wrap.contains(e.target)) {
-        document.getElementById('preset-dropdown')?.classList.remove('open');
-      }
-    });
-  }, 50);
+  // Remove old fixed dropdown if exists
+  document.getElementById('preset-dropdown-fixed')?.remove();
+}
+
+function onPresetMealTypeChange() {
+  const selectedMeals = Array.from(document.querySelectorAll('#preset-meals input:checked')).map(cb => cb.value);
+  const area = document.getElementById('preset-search-area');
+  if (!area) return;
+
+  if (selectedMeals.length === 0) {
+    area.innerHTML = '<div class="preset-no-meals-hint">Valitse ensin ateriatyypit yllä</div>';
+    document.getElementById('preset-dropdown-fixed')?.remove();
+  } else {
+    // Only rebuild if search field doesn't exist yet
+    if (!document.getElementById('preset-search')) {
+      area.innerHTML = `
+        <div class="add-row">
+          <div class="search-wrap" id="preset-searchwrap">
+            <input type="text" id="preset-search"
+              placeholder="Hae ruokaa..."
+              oninput="filterPresetFoods()"
+              onfocus="filterPresetFoods()"
+              onkeydown="presetSearchKeydown(event)"
+              autocomplete="off">
+          </div>
+          <input type="number" id="preset-grams" placeholder="g" min="1" max="9999" style="width:75px">
+          <button class="primary" onclick="addPresetFormItem()" id="preset-add-btn" style="display:none">+</button>
+        </div>`;
+    }
+  }
 }
 
 let presetSelectedFood = null;
 
 function filterPresetFoods() {
-  const q = document.getElementById('preset-search').value.toLowerCase().trim();
-  const drop = document.getElementById('preset-dropdown');
+  const searchEl = document.getElementById('preset-search');
+  if (!searchEl) return;
+  const q = searchEl.value.toLowerCase().trim();
+
+  // Get selected meal types for filtering
+  const selectedMeals = Array.from(document.querySelectorAll('#preset-meals input:checked')).map(cb => cb.value);
+  if (!selectedMeals.length) return;
+
   const opts = Object.entries(foodsDB)
-    .filter(([name, f]) => f.label.toLowerCase().includes(q) || name.toLowerCase().includes(q))
+    .filter(([name, f]) => {
+      const matchesMeal = f.meal_types.some(mt => selectedMeals.includes(mt));
+      const matchesQuery = f.label.toLowerCase().includes(q) || name.toLowerCase().includes(q);
+      return matchesMeal && matchesQuery;
+    })
     .sort(([,a],[,b]) => a.label.localeCompare(b.label,'fi'));
+
+  // Remove old fixed dropdown
+  let drop = document.getElementById('preset-dropdown-fixed');
+  if (!drop) {
+    drop = document.createElement('div');
+    drop.id = 'preset-dropdown-fixed';
+    drop.className = 'preset-search-dropdown-fixed';
+    document.body.appendChild(drop);
+  }
+
+  // Position under search field
+  const rect = searchEl.getBoundingClientRect();
+  drop.style.top = (rect.bottom + 4) + 'px';
+  drop.style.left = rect.left + 'px';
+  drop.style.width = rect.width + 'px';
 
   drop.innerHTML = '';
   if (!opts.length) {
@@ -1467,20 +1580,26 @@ function filterPresetFoods() {
       drop.appendChild(div);
     });
   }
-  drop.classList.add('open');
+  drop.style.display = 'block';
+}
+
+function closePresetDropdown() {
+  const drop = document.getElementById('preset-dropdown-fixed');
+  if (drop) drop.style.display = 'none';
 }
 
 function selectPresetFood(name) {
   const f = foodsDB[name];
   presetSelectedFood = name;
   document.getElementById('preset-search').value = f.label;
-  document.getElementById('preset-dropdown').classList.remove('open');
+  closePresetDropdown();
   document.getElementById('preset-grams').value = f.default_grams || '';
   document.getElementById('preset-add-btn').style.display = 'inline-block';
 }
 
 function presetSearchKeydown(e) {
-  const drop = document.getElementById('preset-dropdown');
+  const drop = document.getElementById('preset-dropdown-fixed');
+  if (!drop) return;
   const options = drop.querySelectorAll('.search-option:not(.no-results)');
   const active = drop.querySelector('.search-option.active');
   let idx = Array.from(options).indexOf(active);
@@ -1496,7 +1615,7 @@ function presetSearchKeydown(e) {
     const sel = drop.querySelector('.search-option.active');
     if (sel?.dataset.name) selectPresetFood(sel.dataset.name);
   } else if (e.key === 'Escape') {
-    drop.classList.remove('open');
+    closePresetDropdown();
   }
 }
 
@@ -1719,6 +1838,15 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeAddFoodModal();
     closePresetsModal();
+    closePresetDropdown();
+  }
+});
+// Close fixed preset dropdown on outside click
+document.addEventListener('click', e => {
+  const searchEl = document.getElementById('preset-search');
+  const dropEl = document.getElementById('preset-dropdown-fixed');
+  if (searchEl && dropEl && !searchEl.contains(e.target) && !dropEl.contains(e.target)) {
+    closePresetDropdown();
   }
 });
 
