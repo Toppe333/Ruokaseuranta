@@ -493,6 +493,51 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
   padding: 0.4rem 0;
 }
 
+/* ── RECIPE CALCULATOR ── */
+.recipe-calc {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 0.7rem 0.9rem;
+  margin-top: 0.5rem;
+}
+.recipe-calc-title { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.4rem; }
+.recipe-calc-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 0.4rem; text-align: center; }
+.recipe-calc-val { font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 600; color: var(--accent); }
+.recipe-calc-label { font-size: 0.58rem; color: var(--muted); }
+.recipe-calc-weight { font-size: 0.72rem; color: var(--muted); margin-top: 0.4rem; }
+
+/* ── INGREDIENT LIST IN MODAL ── */
+.ingredient-card {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.5rem 0; border-bottom: 1px solid var(--border); gap: 0.5rem;
+}
+.ingredient-card:last-child { border-bottom: none; }
+.ingredient-card-name { font-size: 0.78rem; flex: 1; }
+.ingredient-card-meta { font-size: 0.65rem; color: var(--muted); }
+
+/* Recipe ingredient search dropdown - fixed */
+.recipe-search-dropdown-fixed {
+  position: fixed;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 300;
+  box-shadow: 0 4px 16px var(--shadow);
+}
+.recipe-search-dropdown-fixed .search-option {
+  padding: 0.5rem 0.7rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.1s;
+  color: var(--text);
+}
+.recipe-search-dropdown-fixed .search-option:hover,
+.recipe-search-dropdown-fixed .search-option.active { background: var(--surface2); color: var(--accent); }
+.recipe-search-dropdown-fixed .search-option.no-results { color: var(--muted); cursor: default; font-style: italic; }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 500px) {
   .banner-box .value { font-size: 1.2rem; }
@@ -521,7 +566,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 <div class="header">
   <div class="header-title">
     <h1>Ruokaseuranta</h1>
-    <p>v2.4.3 — Supabase</p>
+    <p>v2.5 — Supabase</p>
   </div>
   <div class="header-actions">
     <button class="theme-btn ghost" onclick="toggleTheme()" id="themeBtn">☀️</button>
@@ -529,6 +574,8 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
     <button onclick="exportJSON()" class="ghost">JSON</button>
     <button onclick="document.getElementById('jsonImport').click()" class="ghost">Tuo JSON</button>
     <button onclick="openAddFoodModal()" class="ghost">+ Ruoka</button>
+    <button onclick="openRecipeFoodModal()" class="ghost">+ Resepti</button>
+    <button onclick="openIngredientsModal()" class="ghost">🧂 Raaka-aineet</button>
     <button onclick="openPresetsModal()" class="ghost">📋 Vakioateriat</button>
     <input type="file" id="jsonImport" accept=".json" onchange="importJSON(event)" style="display:none">
   </div>
@@ -633,6 +680,22 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
   </div>
 </div>
 
+<!-- RAAKA-AINEET MODAL -->
+<div class="modal-backdrop" id="ingredientsModal" style="align-items:flex-start;padding-top:2rem">
+  <div class="modal" style="max-width:480px">
+    <h3 id="ingredientsModalTitle">Raaka-aineet</h3>
+    <div id="ingredientsModalContent"></div>
+  </div>
+</div>
+
+<!-- RESEPTIRUOKA MODAL -->
+<div class="modal-backdrop" id="recipeFoodModal" style="align-items:flex-start;padding-top:2rem">
+  <div class="modal" style="max-width:540px;overflow:visible">
+    <h3>Luo ruoka reseptistä</h3>
+    <div id="recipeFoodContent"></div>
+  </div>
+</div>
+
 <script>
 // =============================================
 // ASETUKSET
@@ -714,6 +777,7 @@ const sbDelete = p     => sbFetch(p, { method:'DELETE' });
 // Tila
 // =============================================
 let foodsDB         = {};
+let ingredientsDB   = {}; // {name: {id, label, kcal, carbs, fat}}
 let presetsDB       = []; // {id, name, meal_types, items:[{id, food_id, food_name, grams}]}
 let dayId           = null;
 let dayEntries      = { aamupala:[], lounas:[], valipalat:[], illallinen:[], iltapala:[] };
@@ -745,6 +809,7 @@ async function init() {
       };
     });
     await loadPresets();
+    await loadIngredients();
     buildMealSections();
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('date').value = today;
@@ -1836,11 +1901,20 @@ document.getElementById('addFoodModal').addEventListener('click', e => {
 document.getElementById('presetsModal').addEventListener('click', e => {
   if (e.target === e.currentTarget) closePresetsModal();
 });
+document.getElementById('ingredientsModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeIngredientsModal();
+});
+document.getElementById('recipeFoodModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeRecipeFoodModal();
+});
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeAddFoodModal();
     closePresetsModal();
     closePresetDropdown();
+    closeIngredientsModal();
+    closeRecipeFoodModal();
+    closeRecipeDropdown();
   }
 });
 // Close fixed preset dropdown on outside click
@@ -1850,7 +1924,401 @@ document.addEventListener('click', e => {
   if (searchEl && dropEl && !searchEl.contains(e.target) && !dropEl.contains(e.target)) {
     closePresetDropdown();
   }
+  // Close recipe dropdown
+  const rSearchEl = document.getElementById('recipe-ing-search');
+  const rDropEl = document.getElementById('recipe-dropdown-fixed');
+  if (rSearchEl && rDropEl && !rSearchEl.contains(e.target) && !rDropEl.contains(e.target)) {
+    closeRecipeDropdown();
+  }
 });
+
+// =============================================
+// Raaka-aineet (Ingredients)
+// =============================================
+async function loadIngredients() {
+  try {
+    const ings = await sbGet('ingredients?select=*&order=label.asc');
+    if (!ings) return;
+    ingredientsDB = {};
+    ings.forEach(ing => {
+      ingredientsDB[ing.name] = {
+        id: ing.id, label: ing.label,
+        kcal: ing.kcal_per_100g, carbs: ing.carbs_per_100g, fat: ing.fat_per_100g
+      };
+    });
+  } catch(e) {
+    console.warn('Raaka-aineiden latausvirhe:', e);
+  }
+}
+
+function openIngredientsModal() {
+  document.getElementById('ingredientsModal').classList.add('open');
+  renderIngredientsModalList();
+}
+function closeIngredientsModal() {
+  document.getElementById('ingredientsModal').classList.remove('open');
+}
+
+function renderIngredientsModalList() {
+  const title = document.getElementById('ingredientsModalTitle');
+  const content = document.getElementById('ingredientsModalContent');
+  title.textContent = 'Raaka-aineet';
+
+  const ingList = Object.entries(ingredientsDB).sort(([,a],[,b]) => a.label.localeCompare(b.label,'fi'));
+
+  let html = `<div style="margin-bottom:1rem">
+    <button class="primary" onclick="renderIngredientCreateForm()">+ Uusi raaka-aine</button>
+  </div>`;
+
+  if (!ingList.length) {
+    html += '<p style="font-size:0.78rem;color:var(--muted);font-style:italic">Ei vielä raaka-aineita.</p>';
+  } else {
+    ingList.forEach(([name, ing]) => {
+      html += `<div class="ingredient-card">
+        <span class="ingredient-card-name">${ing.label}</span>
+        <span class="ingredient-card-meta">${ing.kcal} kcal · ${ing.carbs} hh · ${ing.fat} r /100g</span>
+        <button class="danger" onclick="deleteIngredient('${name}')" title="Poista">✕</button>
+      </div>`;
+    });
+  }
+
+  html += `<div class="modal-actions"><button class="ghost" onclick="closeIngredientsModal()">Sulje</button></div>`;
+  content.innerHTML = html;
+}
+
+function renderIngredientCreateForm() {
+  const title = document.getElementById('ingredientsModalTitle');
+  const content = document.getElementById('ingredientsModalContent');
+  title.textContent = 'Lisää raaka-aine';
+
+  content.innerHTML = `
+    <div class="modal-field">
+      <label class="preset-section-label">Nimi (tunniste)</label>
+      <input type="text" id="ing-name" placeholder="esim. kananrinta">
+    </div>
+    <div class="modal-field">
+      <label class="preset-section-label">Näyttönimi</label>
+      <input type="text" id="ing-label" placeholder="esim. Kananrinta">
+    </div>
+    <div class="modal-field">
+      <label class="preset-section-label">Kalorit / 100g</label>
+      <input type="number" id="ing-kcal" placeholder="0" step="0.1">
+    </div>
+    <div class="modal-field">
+      <label class="preset-section-label">Hiilihydraatit / 100g</label>
+      <input type="number" id="ing-carbs" placeholder="0" step="0.1">
+    </div>
+    <div class="modal-field">
+      <label class="preset-section-label">Rasva / 100g</label>
+      <input type="number" id="ing-fat" placeholder="0" step="0.1">
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="renderIngredientsModalList()">Peruuta</button>
+      <button class="primary" onclick="submitNewIngredient()">Lisää</button>
+    </div>
+  `;
+  document.getElementById('ing-name').focus();
+}
+
+async function submitNewIngredient() {
+  const name  = document.getElementById('ing-name').value.trim().toLowerCase().replace(/\s+/g,'_');
+  const label = document.getElementById('ing-label').value.trim();
+  const kcal  = parseFloat(document.getElementById('ing-kcal').value) || 0;
+  const carbs = parseFloat(document.getElementById('ing-carbs').value) || 0;
+  const fat   = parseFloat(document.getElementById('ing-fat').value) || 0;
+
+  if (!name || !label) { alert('Nimi ja näyttönimi ovat pakollisia.'); return; }
+
+  try {
+    const result = await sbPost('ingredients', {
+      name, label, kcal_per_100g: kcal, carbs_per_100g: carbs, fat_per_100g: fat
+    });
+    ingredientsDB[name] = { id: result[0].id, label, kcal, carbs, fat };
+    setStatus(`${label} lisätty ✓`, 'ok');
+    renderIngredientsModalList();
+  } catch(e) { alert('Virhe: '+e.message); }
+}
+
+async function deleteIngredient(name) {
+  const ing = ingredientsDB[name];
+  if (!ing) return;
+  if (!confirm(`Poistetaanko "${ing.label}"?`)) return;
+  try {
+    await sbDelete(`ingredients?id=eq.${ing.id}`);
+    delete ingredientsDB[name];
+    setStatus(`${ing.label} poistettu ✓`, 'ok');
+    renderIngredientsModalList();
+  } catch(e) { alert('Virhe: '+e.message); }
+}
+
+// =============================================
+// Reseptiruoka (Recipe Food)
+// =============================================
+let recipeFormItems = []; // [{ing_name, ing_label, grams}]
+let recipeSelectedIng = null;
+
+function openRecipeFoodModal() {
+  recipeFormItems = [];
+  recipeSelectedIng = null;
+  document.getElementById('recipeFoodModal').classList.add('open');
+  renderRecipeFoodForm();
+}
+function closeRecipeFoodModal() {
+  document.getElementById('recipeFoodModal').classList.remove('open');
+  document.getElementById('recipe-dropdown-fixed')?.remove();
+}
+
+function renderRecipeFoodForm() {
+  const content = document.getElementById('recipeFoodContent');
+
+  const mealChecks = MEALS.map(m => {
+    return `<label class="meal-check"><input type="checkbox" value="${m}"> ${MEAL_LABELS[m]}</label>`;
+  }).join('');
+
+  let itemsHtml = '';
+  recipeFormItems.forEach((it, i) => {
+    itemsHtml += `<div class="preset-builder-item">
+      <span class="preset-builder-item-name">${it.ing_label}</span>
+      <span class="preset-builder-item-grams">${it.grams}g</span>
+      <button class="danger" onclick="removeRecipeItem(${i})">✕</button>
+    </div>`;
+  });
+
+  // Calculate totals
+  const calc = calcRecipe();
+
+  content.innerHTML = `
+    <div class="modal-field">
+      <label class="preset-section-label">Ruoan nimi (tunniste)</label>
+      <input type="text" id="rf-name" placeholder="esim. kanakastike_kevyt">
+    </div>
+    <div class="modal-field">
+      <label class="preset-section-label">Näyttönimi</label>
+      <input type="text" id="rf-label" placeholder="esim. Kanakastike kevyt">
+    </div>
+    <div class="modal-field">
+      <label class="preset-section-label">Oletusgrammamäärä</label>
+      <input type="number" id="rf-default" placeholder="0">
+    </div>
+    <div class="modal-field">
+      <label class="preset-section-label">Ateriatyypit</label>
+      <div class="meal-checkboxes" id="rf-meals">${mealChecks}</div>
+    </div>
+    <div class="modal-field">
+      <label class="preset-section-label">Ainekset</label>
+      <div class="preset-builder-items" id="recipe-items">${itemsHtml}</div>
+      <div style="margin-top:0.6rem">
+        <div class="add-row">
+          <div class="search-wrap" id="recipe-searchwrap">
+            <input type="text" id="recipe-ing-search"
+              placeholder="Hae raaka-ainetta..."
+              oninput="filterRecipeIngredients()"
+              onfocus="filterRecipeIngredients()"
+              onkeydown="recipeSearchKeydown(event)"
+              autocomplete="off">
+          </div>
+          <input type="number" id="recipe-ing-grams" placeholder="g" min="1" max="9999" style="width:75px">
+          <button class="primary" onclick="addRecipeItem()" id="recipe-add-btn" style="display:none">+</button>
+        </div>
+      </div>
+      ${recipeFormItems.length ? `
+      <div class="recipe-calc">
+        <div class="recipe-calc-title">Lasketut arvot per 100g</div>
+        <div class="recipe-calc-grid">
+          <div><div class="recipe-calc-val">${calc.kcal}</div><div class="recipe-calc-label">kcal</div></div>
+          <div><div class="recipe-calc-val">${calc.carbs}</div><div class="recipe-calc-label">hiilarit</div></div>
+          <div><div class="recipe-calc-val">${calc.fat}</div><div class="recipe-calc-label">rasva</div></div>
+          <div><div class="recipe-calc-val">${calc.totalG}g</div><div class="recipe-calc-label">paino yht.</div></div>
+        </div>
+      </div>` : ''}
+    </div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeRecipeFoodModal()">Peruuta</button>
+      <button class="primary" onclick="submitRecipeFood()">Luo ruoka</button>
+    </div>
+  `;
+}
+
+function calcRecipe() {
+  let totalG = 0, totalKcal = 0, totalCarbs = 0, totalFat = 0;
+  recipeFormItems.forEach(it => {
+    const ing = ingredientsDB[it.ing_name];
+    if (!ing) return;
+    totalG += it.grams;
+    totalKcal += it.grams * ing.kcal / 100;
+    totalCarbs += it.grams * ing.carbs / 100;
+    totalFat += it.grams * ing.fat / 100;
+  });
+  if (totalG === 0) return { kcal: 0, carbs: 0, fat: 0, totalG: 0 };
+  return {
+    kcal: Math.round(totalKcal / totalG * 100 * 10) / 10,
+    carbs: Math.round(totalCarbs / totalG * 100 * 10) / 10,
+    fat: Math.round(totalFat / totalG * 100 * 10) / 10,
+    totalG: Math.round(totalG)
+  };
+}
+
+function filterRecipeIngredients() {
+  const searchEl = document.getElementById('recipe-ing-search');
+  if (!searchEl) return;
+  const q = searchEl.value.toLowerCase().trim();
+
+  const opts = Object.entries(ingredientsDB)
+    .filter(([name, ing]) => ing.label.toLowerCase().includes(q) || name.toLowerCase().includes(q))
+    .sort(([,a],[,b]) => a.label.localeCompare(b.label,'fi'));
+
+  let drop = document.getElementById('recipe-dropdown-fixed');
+  if (!drop) {
+    drop = document.createElement('div');
+    drop.id = 'recipe-dropdown-fixed';
+    drop.className = 'recipe-search-dropdown-fixed';
+    document.body.appendChild(drop);
+  }
+
+  const rect = searchEl.getBoundingClientRect();
+  drop.style.top = (rect.bottom + 4) + 'px';
+  drop.style.left = rect.left + 'px';
+  drop.style.width = rect.width + 'px';
+
+  drop.innerHTML = '';
+  if (!opts.length) {
+    drop.innerHTML = '<div class="search-option no-results">Ei raaka-aineita</div>';
+  } else {
+    opts.forEach(([name, ing], i) => {
+      const div = document.createElement('div');
+      div.className = 'search-option' + (i === 0 ? ' active' : '');
+      div.textContent = `${ing.label} (${ing.kcal} kcal/100g)`;
+      div.dataset.name = name;
+      div.onclick = () => selectRecipeIngredient(name);
+      drop.appendChild(div);
+    });
+  }
+  drop.style.display = 'block';
+}
+
+function closeRecipeDropdown() {
+  const drop = document.getElementById('recipe-dropdown-fixed');
+  if (drop) drop.style.display = 'none';
+}
+
+function selectRecipeIngredient(name) {
+  const ing = ingredientsDB[name];
+  recipeSelectedIng = name;
+  document.getElementById('recipe-ing-search').value = ing.label;
+  closeRecipeDropdown();
+  document.getElementById('recipe-ing-grams').value = '';
+  document.getElementById('recipe-add-btn').style.display = 'inline-block';
+  document.getElementById('recipe-ing-grams').focus();
+}
+
+function recipeSearchKeydown(e) {
+  const drop = document.getElementById('recipe-dropdown-fixed');
+  if (!drop) return;
+  const options = drop.querySelectorAll('.search-option:not(.no-results)');
+  const active = drop.querySelector('.search-option.active');
+  let idx = Array.from(options).indexOf(active);
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (idx < options.length-1) { options[idx]?.classList.remove('active'); options[idx+1].classList.add('active'); }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (idx > 0) { options[idx]?.classList.remove('active'); options[idx-1].classList.add('active'); }
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    const sel = drop.querySelector('.search-option.active');
+    if (sel?.dataset.name) selectRecipeIngredient(sel.dataset.name);
+  } else if (e.key === 'Escape') {
+    closeRecipeDropdown();
+  }
+}
+
+function addRecipeItem() {
+  if (!recipeSelectedIng) return;
+  const grams = parseInt(document.getElementById('recipe-ing-grams').value);
+  if (!grams || grams <= 0) return;
+  const ing = ingredientsDB[recipeSelectedIng];
+  recipeFormItems.push({ ing_name: recipeSelectedIng, ing_label: ing.label, grams });
+  recipeSelectedIng = null;
+  // Re-render preserving name/label/meals values
+  const savedName = document.getElementById('rf-name')?.value || '';
+  const savedLabel = document.getElementById('rf-label')?.value || '';
+  const savedDefault = document.getElementById('rf-default')?.value || '';
+  const savedMeals = Array.from(document.querySelectorAll('#rf-meals input:checked')).map(cb => cb.value);
+  renderRecipeFoodForm();
+  // Restore values
+  if (savedName) document.getElementById('rf-name').value = savedName;
+  if (savedLabel) document.getElementById('rf-label').value = savedLabel;
+  if (savedDefault) document.getElementById('rf-default').value = savedDefault;
+  savedMeals.forEach(m => {
+    const cb = document.querySelector(`#rf-meals input[value="${m}"]`);
+    if (cb) cb.checked = true;
+  });
+}
+
+function removeRecipeItem(i) {
+  recipeFormItems.splice(i, 1);
+  const savedName = document.getElementById('rf-name')?.value || '';
+  const savedLabel = document.getElementById('rf-label')?.value || '';
+  const savedDefault = document.getElementById('rf-default')?.value || '';
+  const savedMeals = Array.from(document.querySelectorAll('#rf-meals input:checked')).map(cb => cb.value);
+  renderRecipeFoodForm();
+  if (savedName) document.getElementById('rf-name').value = savedName;
+  if (savedLabel) document.getElementById('rf-label').value = savedLabel;
+  if (savedDefault) document.getElementById('rf-default').value = savedDefault;
+  savedMeals.forEach(m => {
+    const cb = document.querySelector(`#rf-meals input[value="${m}"]`);
+    if (cb) cb.checked = true;
+  });
+}
+
+async function submitRecipeFood() {
+  const name     = document.getElementById('rf-name').value.trim().toLowerCase().replace(/\s+/g,'_');
+  const label    = document.getElementById('rf-label').value.trim();
+  const defG     = parseInt(document.getElementById('rf-default').value) || 0;
+  const mealTypes = Array.from(document.querySelectorAll('#rf-meals input:checked')).map(cb => cb.value);
+
+  if (!name || !label) { alert('Nimi ja näyttönimi ovat pakollisia.'); return; }
+  if (!mealTypes.length) { alert('Valitse vähintään yksi ateriatyyppi.'); return; }
+  if (!recipeFormItems.length) { alert('Lisää vähintään yksi raaka-aine.'); return; }
+
+  const calc = calcRecipe();
+
+  setStatus('Tallennetaan...');
+  try {
+    // Create food with calculated values
+    const result = await sbPost('foods', {
+      name, label,
+      kcal_per_100g: calc.kcal,
+      carbs_per_100g: calc.carbs,
+      fat_per_100g: calc.fat,
+      default_grams: defG,
+      meal_types: mealTypes
+    });
+    const foodId = result[0].id;
+
+    // Save recipe items as reference
+    for (const item of recipeFormItems) {
+      const ing = ingredientsDB[item.ing_name];
+      if (!ing) continue;
+      await sbPost('recipe_items', {
+        food_id: foodId,
+        ingredient_id: ing.id,
+        grams: item.grams
+      });
+    }
+
+    // Update local cache
+    foodsDB[name] = {
+      id: foodId, label,
+      kcal: calc.kcal, carbs: calc.carbs, fat: calc.fat,
+      default_grams: defG, meal_types: mealTypes
+    };
+
+    closeRecipeFoodModal();
+    setStatus(`${label} luotu reseptistä ✓`, 'ok');
+  } catch(e) { alert('Virhe: '+e.message); }
+}
 
 // =============================================
 // CSV
